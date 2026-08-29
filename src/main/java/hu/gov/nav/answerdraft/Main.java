@@ -1,46 +1,13 @@
 package hu.gov.nav.answerdraft;
 
-/** A GitHub Action belépési pontja. */
+import java.util.*;
+
 public final class Main {
-    private Main() {
-    }
-
-    /** Elindítja a Workspace Agentet, megvárja, majd emailben elküldi a beszélgetés linkjét. */
-    public static void main(String[] args) throws Exception {
-        Config config = Config.fromEnvironment();
-        Question question = Question.from(config);
-        String conversationKey = "github:%s:%s:%s".formatted(
-                question.repository(), question.eventKind(), question.number());
-
-        System.out.println("Workspace Agent indítása: " + question.url());
-        WorkspaceAgentClient.AgentRun run = new WorkspaceAgentClient(
-                config.agentTriggerId(), config.agentAccessToken())
-                .triggerAndWait(conversationKey, AgentPromptBuilder.build(question), config.pollTimeoutSeconds());
-
-        String subject = "[CHATGPT DRAFT READY] %s #%s – %s".formatted(
-                question.repository(), question.number(), question.title());
-        String body = """
-                Elkészült a ChatGPT Workspace Agent választervezete.
-
-                KÉRDÉS
-                ======
-                %s
-
-                %s
-
-                CHATGPT-VÁLASZTERVEZET MEGNYITÁSA
-                =================================
-                %s
-
-                EREDETI GITHUB-KÉRDÉS
-                ======================
-                %s
-
-                A választ ellenőrizd és szükség esetén javítsd. A rendszer semmit nem publikált GitHubon.
-                """.formatted(question.title(), question.body(), run.conversationUrl(), question.url());
-
-        new SmtpMailer(config).send(subject, body);
-        System.out.println("A ChatGPT-beszélgetés linkjét tartalmazó email elküldve: "
-                + config.recipients().size() + " címzett.");
+    public static void main(String[] args){
+        Config c=Config.fromEnvironment();Question q=new Question(c.eventKind(),c.repository(),c.number(),c.title(),c.body(),c.questionUrl(),c.author());WebClient http=new WebClient();
+        System.out.println("Nyilvános GitHub-források keresése: "+c.organization());List<Source> sources=new ArrayList<>(new GitHubSourceCollector(http,c).collect(q));
+        if(c.navSearch()){System.out.println("Nyilvános NAV-webforrások keresése...");sources.addAll(new NavSourceCollector(http).collect(q));}
+        System.out.println("Összegyűjtött források: "+sources.size());String draft=new GroqClient(http,c).generate(PromptBuilder.build(q,sources));EmailComposer.Email email=EmailComposer.compose(q,draft,sources);
+        if(c.dryRun()){System.out.println("DRY RUN – email nem kerül elküldésre.\n\n"+email.subject()+"\n\n"+email.body());}else{new SmtpMailer().send(c,email);System.out.println("A választervezet elküldve "+c.recipients().size()+" címzettnek. GitHub-publikálás nem történt.");}
     }
 }

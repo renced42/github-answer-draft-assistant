@@ -1,4 +1,4 @@
-name: GitHub választervezet ChatGPT-ben
+name: GitHub választervezet emailben
 
 on:
   issues:
@@ -19,8 +19,9 @@ jobs:
       name: Github assistant
     steps:
       - name: Issue választervezet
-        uses: renced42/github-answer-draft-assistant@v2.0.1
+        uses: renced42/github-answer-draft-assistant@main
         with:
+          organization: nav-gov-hu
           event-kind: issue
           repository: ${{ github.repository }}
           number: ${{ github.event.issue.number }}
@@ -29,9 +30,13 @@ jobs:
           question-url: ${{ github.event.issue.html_url }}
           author: ${{ github.event.issue.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
-          workspace-agent-trigger-id: ${{ vars.WORKSPACE_AGENT_TRIGGER_ID }}
+          groq-model: ${{ vars.DRAFT_GROQ_MODEL || 'openai/gpt-oss-120b' }}
+          nav-gov-hu-search: "true"
+          browser-search: "true"
         env:
-          WORKSPACE_AGENT_ACCESS_TOKEN: ${{ secrets.WORKSPACE_AGENT_ACCESS_TOKEN }}
+          GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -46,8 +51,9 @@ jobs:
       name: Github assistant
     steps:
       - name: Discussion választervezet
-        uses: renced42/github-answer-draft-assistant@v2.0.1
+        uses: renced42/github-answer-draft-assistant@main
         with:
+          organization: nav-gov-hu
           event-kind: discussion
           repository: ${{ github.repository }}
           number: ${{ github.event.discussion.number }}
@@ -56,9 +62,13 @@ jobs:
           question-url: ${{ github.event.discussion.html_url }}
           author: ${{ github.event.discussion.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
-          workspace-agent-trigger-id: ${{ vars.WORKSPACE_AGENT_TRIGGER_ID }}
+          groq-model: ${{ vars.DRAFT_GROQ_MODEL || 'openai/gpt-oss-120b' }}
+          nav-gov-hu-search: "true"
+          browser-search: "true"
         env:
-          WORKSPACE_AGENT_ACCESS_TOKEN: ${{ secrets.WORKSPACE_AGENT_ACCESS_TOKEN }}
+          GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}

@@ -1,117 +1,104 @@
-# GitHub Answer Workspace Agent – Java V2
+# GitHub Answer Draft Assistant – Java 21 + Groq
 
-Ez a GitHub Action új Issue vagy Discussion létrehozásakor elindít egy ChatGPT Workspace Agentet.
-Az Agent a nyilvános `nav-gov-hu` repository-kban és a NAV hivatalos weboldalain kutat, majd egy
-ChatGPT-beszélgetésben választervezetet készít. A Java alkalmazás megvárja a futás végét, és Gmail
-SMTP-n elküldi a beszélgetés linkjét a konfigurált címre.
+Nyilvános GitHub Issue vagy Discussion létrehozásakor a rendszer:
 
-Az Action **nem publikál választ GitHubon**, és nincs GitHub írási jogosultsága.
+1. keres a teljes `nav-gov-hu` GitHub organization nyilvános fájljaiban, issue-iban és discussionjeiben;
+2. előnyben részesíti az XSD-, XML-, minta- és specifikációfájlokat, és követi az XSD include/import hivatkozásokat;
+3. opcionálisan keres a nyilvános `nav.gov.hu` oldalakon;
+4. a Groq modell és böngészős keresés segítségével magyar választervezetet készít;
+5. a teljes tervezetet és az eredeti kérdés linkjét emailben elküldi;
+6. **soha nem ír és nem publikál semmit GitHubra**.
 
-## Miért link érkezik, nem a válasz teljes szövege?
+Az alkalmazás Java 21, külső Java-függőség és saját szerver nélkül fut GitHub Actionsben. A tesztverzió közvetlenül a `main` ágról használható, ezért nem kell tag vagy GitHub Release.
 
-A Workspace Agent Trigger Runs API jelenleg visszaadja a futás állapotát és a beszélgetés URL-jét,
-de az Agent válaszának teljes szövege nem kérhető le az API-ból. Emiatt az email a kérdést, az
-eredeti GitHub-linket és a kész ChatGPT-beszélgetés linkjét tartalmazza.
+## 1. Az Action repository frissítése
 
-## 1. Workspace Agent létrehozása
+A ZIP tartalmát másold a meglévő:
 
-1. ChatGPT Workben hozz létre egy új Agentet.
-2. Másold be az `agent/NAV_ANSWER_AGENT_INSTRUCTIONS.md` tartalmát az Agent utasításaihoz.
-3. Adj neki hozzáférést a GitHub nyilvános tartalmaihoz és a webes kereséshez.
-4. A GitHub-kapcsolat csak olvasási jogosultságú legyen. Ne adj publikálási vagy írási eszközt.
-5. Tedd közzé az Agent API trigger csatornáját.
-6. Jegyezd fel az `agtch_...` alakú triggerazonosítót.
-7. Hozz létre Workspace Agent access tokent.
+`renced42/github-answer-draft-assistant`
 
-Hivatalos API-leírás: <https://developers.openai.com/workspace-agents/trigger-runs>
+repository gyökerébe. Az `action.yml` közvetlenül a repository gyökerében legyen. Commitold és pushold a fájlokat a `main` ágra.
 
-## 2. Az Action repository frissítése
+A régi Python-, Gemini- és Workspace Agent-fájlok a működéshez nem kellenek. A biztos átálláshoz érdemes azokat a repositoryból eltávolítani, de a Java Action számára az új `action.yml` és `src/` a meghatározó.
 
-1. Nyisd meg a meglévő `renced42/github-answer-draft-assistant` repository-t.
-2. Másold bele ennek a csomagnak a tartalmát. A gyökérben lévő `action.yml` írja felül a V1 fájlját.
-3. Commitold és pushold a fájlokat az alapértelmezett branchre.
-4. Készíts az új commitra `v2.0.0` nevű, kisbetűs taget és ugyanilyen Release-t.
+## 2. A tesztrepository GitHub Environment beállítása
 
-```bash
-git tag v2.0.0
-git push origin v2.0.0
-```
-
-A ZIP-fájlt nem kell feltölteni a Release assetjei közé. A GitHub Action a taghez tartozó repository-
-fájlokat használja; ezért az `action.yml` és a `src/` könyvtár legyen benne a tag commitjában.
-
-## 3. Teszt repository environment beállítása
-
-A `renced42/github-answer-draft-test` repository-ban nyisd meg:
+A `renced42/github-answer-draft-test` repositoryban nyisd meg:
 
 `Settings → Environments → Github assistant`
 
-Environment variable:
+Az environment neve pontosan: `Github assistant`.
+
+### Environment variables
 
 | Név | Érték |
 |---|---|
-| `DRAFT_EMAIL_TO` | `rencenji.denes@gmail.com` vagy más cím |
-| `WORKSPACE_AGENT_TRIGGER_ID` | az `agtch_...` azonosító |
+| `DRAFT_EMAIL_TO` | `rencenji.denes@gmail.com` (szabadon módosítható) |
+| `DRAFT_GROQ_MODEL` | `openai/gpt-oss-120b` |
 
-Environment secrets:
+### Environment secrets
 
 | Név | Érték |
 |---|---|
-| `WORKSPACE_AGENT_ACCESS_TOKEN` | Workspace Agent access token |
-| `MAIL_FROM` | a küldő Gmail-cím |
-| `SMTP_HOST` | `smtp.gmail.com` |
-| `SMTP_PORT` | `587` |
-| `SMTP_USERNAME` | a küldő Gmail-cím |
-| `SMTP_PASSWORD` | Google alkalmazásjelszó, szóközök nélkül |
+| `GROQ_API_KEY` | a már létrehozott Groq API-kulcs |
+| `MAIL_FROM` | a feladó email-címe |
+| `SMTP_HOST` | Gmail esetén `smtp.gmail.com` |
+| `SMTP_PORT` | Gmail STARTTLS esetén `587` |
+| `SMTP_USERNAME` | a feladó Gmail-címe |
+| `SMTP_PASSWORD` | Gmail alkalmazásjelszó, nem a normál jelszó |
 | `SMTP_STARTTLS` | `true` |
+| `ORG_READ_TOKEN` | opcionális; publikus forrásokhoz üresen hagyható |
 
-A korábbi `AI_API_KEY`, `DRAFT_AI_PROVIDER`, `DRAFT_AI_MODEL` és `ORG_READ_TOKEN` nem szükséges.
+Az `AI_API_KEY`, `WORKSPACE_AGENT_TRIGGER_ID`, `WORKSPACE_AGENT_ACCESS_TOKEN` és Gemini-beállítások ehhez a változathoz nem kellenek.
 
-## 4. Workflow telepítése
+## 3. A workflow telepítése a tesztrepositoryba
 
-A csomagban az `example/github-answer-draft.yml` példafájl található. Ezt másold a teszt repository
-`.github/workflows/github-answer-draft.yml` útvonalára. A két jobban szereplő alábbi
-blokk szükséges ahhoz, hogy az environment változói és secretjei elérhetők legyenek:
+Az `example/github-answer-draft.yml` fájlt másold ide:
+
+`.github/workflows/github-answer-draft.yml`
+
+A mellékelt példa már tartalmazza mindkét jobnál:
 
 ```yaml
 environment:
   name: Github assistant
 ```
 
-Ha az Action repository-d neve eltér, módosítsd mindkét `uses:` sort. A tag kis- és
-nagybetűérzékeny: `@v2.0.0`, nem `@V2.0.0`.
+és az Action hivatkozása:
 
-## 5. Tesztelés
-
-Hozz létre új Issue-t a teszt repository-ban. A futást itt látod:
-
-`Actions → GitHub választervezet ChatGPT-ben`
-
-A logban várhatóan ezek jelennek meg:
-
-```text
-Workspace Agent indítása: https://github.com/...
-Workspace Agent állapota: queued
-Workspace Agent állapota: in_progress
-A ChatGPT-beszélgetés linkjét tartalmazó email elküldve: 1 címzett.
+```yaml
+uses: renced42/github-answer-draft-assistant@main
 ```
 
-Az Agent futása néhány percet is igénybe vehet. A kód legfeljebb 15 percig vár.
+Először az Action repository `main` ágát frissítsd, csak utána a tesztrepository workflow-ját.
 
-## 6. Helyi Java-ellenőrzés
+## 4. Tesztelés
 
-Java 21 mellett:
+Hozz létre **új** issue-t a tesztrepositoryban. A workflow az `opened` eseményre indul; egy régi futás `Re-run jobs` parancsa az adott futásban rögzített workflow-verziót használhatja, ezért Action- vagy workflow-frissítés után az új issue a biztos teszt.
+
+A futás itt követhető:
+
+`github-answer-draft-test → Actions → GitHub választervezet emailben`
+
+Siker esetén a napló végén ez jelenik meg:
+
+`A választervezet elküldve 1 címzettnek. GitHub-publikálás nem történt.`
+
+Az email spam mappáját is ellenőrizd.
+
+## 5. Biztonsági és költségkorlátok
+
+- A csomag blokkolja a privát kérdés-repositoryt, és csak nyilvános NAV/GitHub-forrásokra készült.
+- Az Issue/Discussion szövegét és a talált publikus forrásokat a Groq szolgáltatás megkapja.
+- A GitHub-jogosultságok csak olvasási jogok.
+- Nincs automatikus válasz, komment vagy publikálás.
+- A Groq Free Plan jelenlegi `openai/gpt-oss-120b` limitje 30 kérés/perc, 1000 kérés/nap, 8000 token/perc és 200 000 token/nap. A csomag ezért korlátozza az elküldött forráskörnyezetet és a válasz hosszát. A limitek változhatnak; túllépéskor a workflow hibával leáll, és később újrapróbálható.
+- A Groq dokumentációja szerint a `browser_search` támogatott az `openai/gpt-oss-120b` modellen, és szerveroldalon fut; külön böngészőszolgáltatást nem kell telepíteni.
+
+## Helyi/CI önellenőrzés
 
 ```bash
-chmod +x scripts/test.sh
-./scripts/test.sh
+bash scripts/test.sh
 ```
 
-Nincs Maven- vagy külső Java-függőség; az Action futás közben `javac`-kal fordít.
-
-## Költség
-
-Az Action nem használ Gemini- vagy OpenAI Platform API-kulcsot. A GitHub publikus repository standard
-runnerhasználata általában nem jelent külön Actions-költséget. A Workspace Agent futtatása azonban a
-ChatGPT Workspace csomagodhoz tartozó Work/credit keretet használhat; ezért a teljes működés csak akkor
-marad külön díj nélküli, ha a meglévő workspace-keretbe belefér és nincs engedélyezett túlfogyasztás.
+Ehhez Java 21 JDK szükséges. A GitHub Action és a mellékelt CI automatikusan telepíti a Temurin Java 21-et.

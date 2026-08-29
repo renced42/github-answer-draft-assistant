@@ -1,15 +1,19 @@
-name: "GitHub választervezet ChatGPT Workspace Agenttel"
-description: "Workspace Agent futtatása és a ChatGPT-beszélgetés linkjének elküldése emailben"
+name: "GitHub Answer Draft Assistant – Java + Groq"
+description: "Nyilvános NAV-forrásokból választervezetet készít és emailben elküldi. GitHubra nem publikál."
 
 inputs:
+  organization:
+    description: "A forráskeresés GitHub organizationje"
+    required: false
+    default: "nav-gov-hu"
   event-kind:
     description: "issue vagy discussion"
     required: true
   repository:
-    description: "Tulajdonos/repository"
+    description: "A kérdést tartalmazó owner/repository"
     required: true
   number:
-    description: "Issue vagy Discussion sorszáma"
+    description: "Az Issue vagy Discussion sorszáma"
     required: true
   title:
     description: "A kérdés címe"
@@ -22,19 +26,28 @@ inputs:
     description: "Az eredeti GitHub-kérdés URL-je"
     required: true
   author:
-    description: "A kérdező GitHub-neve"
+    description: "A kérdés szerzőjének GitHub-neve"
     required: false
     default: "ismeretlen"
   email-to:
-    description: "Címzettek vesszővel elválasztva"
+    description: "Vesszővel elválasztott email-címzettek"
     required: true
-  workspace-agent-trigger-id:
-    description: "A közzétett Workspace Agent triggerazonosítója (agtch_...)"
-    required: true
-  poll-timeout-seconds:
-    description: "Legfeljebb ennyi ideig vár az Agentre"
+  groq-model:
+    description: "A Groq modellen belüli modellazonosító"
     required: false
-    default: "900"
+    default: "openai/gpt-oss-120b"
+  nav-gov-hu-search:
+    description: "Keressen-e a nyilvános nav.gov.hu oldalakon"
+    required: false
+    default: "true"
+  browser-search:
+    description: "Használja-e a Groq beépített böngészős keresését"
+    required: false
+    default: "true"
+  dry-run:
+    description: "Email helyett csak a workflow-naplóba írja a tervezetet"
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -48,14 +61,16 @@ runs:
     - name: Java alkalmazás fordítása
       shell: bash
       run: |
-        BUILD_DIR="${RUNNER_TEMP}/github-answer-workspace-agent"
+        BUILD_DIR="${RUNNER_TEMP}/github-answer-draft-assistant"
+        rm -rf "${BUILD_DIR}"
         mkdir -p "${BUILD_DIR}"
         find "${GITHUB_ACTION_PATH}/src/main/java" -name '*.java' -print0 \
           | xargs -0 javac --release 21 -encoding UTF-8 -d "${BUILD_DIR}"
 
-    - name: Választervezet indítása és email küldése
+    - name: Választervezet elkészítése és elküldése
       shell: bash
       env:
+        ASSISTANT_ORGANIZATION: ${{ inputs.organization }}
         ASSISTANT_EVENT_KIND: ${{ inputs.event-kind }}
         ASSISTANT_REPOSITORY: ${{ inputs.repository }}
         ASSISTANT_NUMBER: ${{ inputs.number }}
@@ -64,8 +79,10 @@ runs:
         ASSISTANT_QUESTION_URL: ${{ inputs.question-url }}
         ASSISTANT_AUTHOR: ${{ inputs.author }}
         ASSISTANT_EMAIL_TO: ${{ inputs.email-to }}
-        WORKSPACE_AGENT_TRIGGER_ID: ${{ inputs.workspace-agent-trigger-id }}
-        ASSISTANT_POLL_TIMEOUT_SECONDS: ${{ inputs.poll-timeout-seconds }}
+        ASSISTANT_GROQ_MODEL: ${{ inputs.groq-model }}
+        ASSISTANT_NAV_SEARCH: ${{ inputs.nav-gov-hu-search }}
+        ASSISTANT_BROWSER_SEARCH: ${{ inputs.browser-search }}
+        ASSISTANT_DRY_RUN: ${{ inputs.dry-run }}
       run: |
-        java -cp "${RUNNER_TEMP}/github-answer-workspace-agent" \
+        java -cp "${RUNNER_TEMP}/github-answer-draft-assistant" \
           hu.gov.nav.answerdraft.Main

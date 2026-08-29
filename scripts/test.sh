@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BUILD_DIR="${RUNNER_TEMP:-/tmp}/github-answer-workspace-agent-test"
+BUILD_DIR="${RUNNER_TEMP:-/tmp}/github-answer-draft-assistant-test"
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 
