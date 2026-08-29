@@ -69,12 +69,13 @@ A korábbi `AI_API_KEY`, `DRAFT_AI_PROVIDER`, `DRAFT_AI_MODEL` és `ORG_READ_TOK
 
 ## 4. Workflow telepítése
 
-Másold a csomag `.github/workflows/github-answer-draft.yml` fájlját a teszt repository azonos
-útvonalára. A két jobban szereplő alábbi sor szükséges ahhoz, hogy az environment változói és
-secretjei elérhetők legyenek:
+A csomagban az `example/github-answer-draft.yml` példafájl található. Ezt másold a teszt repository
+`.github/workflows/github-answer-draft.yml` útvonalára. A két jobban szereplő alábbi
+blokk szükséges ahhoz, hogy az environment változói és secretjei elérhetők legyenek:
 
 ```yaml
-environment: Github assistant
+environment:
+  name: Github assistant
 ```
 
 Ha az Action repository-d neve eltér, módosítsd mindkét `uses:` sort. A tag kis- és

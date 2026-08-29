@@ -1,4 +1,4 @@
-name: GitHub választervezet emailben
+name: GitHub választervezet ChatGPT-ben
 
 on:
   issues:
@@ -15,9 +15,11 @@ jobs:
   issue-draft:
     if: github.event_name == 'issues'
     runs-on: ubuntu-latest
+    environment:
+      name: Github assistant
     steps:
       - name: Issue választervezet
-        uses: nav-gov-hu/github-answer-draft-assistant@v1
+        uses: renced42/github-answer-draft-assistant@v2.0.0
         with:
           event-kind: issue
           repository: ${{ github.repository }}
@@ -27,17 +29,9 @@ jobs:
           question-url: ${{ github.event.issue.html_url }}
           author: ${{ github.event.issue.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
-          ai-provider: ${{ vars.DRAFT_AI_PROVIDER || 'gemini' }}
-          ai-model: ${{ vars.DRAFT_AI_MODEL || 'gemini-3.6-flash' }}
-          mail-provider: ${{ vars.DRAFT_MAIL_PROVIDER || 'smtp' }}
-          nav-gov-hu-search: "true"
+          workspace-agent-trigger-id: ${{ vars.WORKSPACE_AGENT_TRIGGER_ID }}
         env:
-          GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          GRAPH_TENANT_ID: ${{ secrets.GRAPH_TENANT_ID }}
-          GRAPH_CLIENT_ID: ${{ secrets.GRAPH_CLIENT_ID }}
-          GRAPH_CLIENT_SECRET: ${{ secrets.GRAPH_CLIENT_SECRET }}
+          WORKSPACE_AGENT_ACCESS_TOKEN: ${{ secrets.WORKSPACE_AGENT_ACCESS_TOKEN }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -48,9 +42,11 @@ jobs:
   discussion-draft:
     if: github.event_name == 'discussion'
     runs-on: ubuntu-latest
+    environment:
+      name: Github assistant
     steps:
       - name: Discussion választervezet
-        uses: nav-gov-hu/github-answer-draft-assistant@v1
+        uses: renced42/github-answer-draft-assistant@v2.0.0
         with:
           event-kind: discussion
           repository: ${{ github.repository }}
@@ -60,17 +56,9 @@ jobs:
           question-url: ${{ github.event.discussion.html_url }}
           author: ${{ github.event.discussion.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
-          ai-provider: ${{ vars.DRAFT_AI_PROVIDER || 'gemini' }}
-          ai-model: ${{ vars.DRAFT_AI_MODEL || 'gemini-3.6-flash' }}
-          mail-provider: ${{ vars.DRAFT_MAIL_PROVIDER || 'smtp' }}
-          nav-gov-hu-search: "true"
+          workspace-agent-trigger-id: ${{ vars.WORKSPACE_AGENT_TRIGGER_ID }}
         env:
-          GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
-          GITHUB_TOKEN: ${{ github.token }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          GRAPH_TENANT_ID: ${{ secrets.GRAPH_TENANT_ID }}
-          GRAPH_CLIENT_ID: ${{ secrets.GRAPH_CLIENT_ID }}
-          GRAPH_CLIENT_SECRET: ${{ secrets.GRAPH_CLIENT_SECRET }}
+          WORKSPACE_AGENT_ACCESS_TOKEN: ${{ secrets.WORKSPACE_AGENT_ACCESS_TOKEN }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
