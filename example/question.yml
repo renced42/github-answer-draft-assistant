@@ -1,0 +1,29 @@
+name: NAV technikai kérdés
+description: Választervezet kérése nyilvános NAV-források alapján
+title: "[KÉRDÉS] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Terjedelmi figyelmeztetés
+
+        A kérdés leírása legfeljebb **3000 karakter** legyen.
+
+        A 3000 karakternél hosszabb szövegből a választervezet-készítő rendszer csak az első 3000 karaktert dolgozza fel. A teljes Issue változatlanul megmarad a GitHubon.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Kérdés részletes leírása
+      description: Legfeljebb 3000 karakterben írd le a kérdést. Hosszabb naplót vagy példát inkább fájlmellékletként vagy hivatkozással adj meg.
+      placeholder: Írd le pontosan a kérdést, az érintett interfészt, műveletet és verziót.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: length-confirmation
+    attributes:
+      label: Terjedelmi korlát elfogadása
+      options:
+        - label: Tudomásul vettem, hogy a választervezet legfeljebb az első 3000 karaktert dolgozza fel.
+          required: true

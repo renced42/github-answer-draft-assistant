@@ -11,6 +11,7 @@ public final class SelfTest {
         String prompt=PromptBuilder.build(q,List.of(new Source("schema","https://github.com/nav-gov-hu/test/schema.xsd","<xs:schema/>",100)));
         check(prompt.contains("szemléltető, generált példa")&&prompt.contains("nav-gov-hu"),"prompt korlátozások");
         EmailComposer.Email email=EmailComposer.compose(q,"## JAVASOLT VÁLASZ\nTeszt",List.of());check(email.body().contains(q.url())&&email.subject().contains("#1"),"email és kérdéslink");
+        String limited=Main.limitQuestion("á".repeat(3010),3000);check(limited.startsWith("á".repeat(3000))&&limited.contains("le lett rövidítve"),"kérdéshossz korlátozása");
         System.out.println("Minden önellenőrzés sikeres.");
     }
     private static void check(boolean value,String name){if(!value)throw new AssertionError("Sikertelen teszt: "+name);}

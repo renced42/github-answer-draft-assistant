@@ -35,6 +35,7 @@ Az environment neve pontosan: `Github assistant`.
 |---|---|
 | `DRAFT_EMAIL_TO` | `rencenji.denes@gmail.com` (szabadon módosítható) |
 | `DRAFT_GROQ_MODEL` | `openai/gpt-oss-120b` |
+| `DRAFT_QUESTION_MAX_CHARS` | `3000` |
 
 ### Environment secrets
 
@@ -72,7 +73,20 @@ uses: renced42/github-answer-draft-assistant@main
 
 Először az Action repository `main` ágát frissítsd, csak utána a tesztrepository workflow-ját.
 
-## 4. Tesztelés
+## 4. Feladás előtti Issue-figyelmeztetés
+
+Másold az alábbi fájlokat a tesztrepositoryba:
+
+| Csomagban | Tesztrepositoryban |
+|---|---|
+| `example/question.yml` | `.github/ISSUE_TEMPLATE/question.yml` |
+| `example/config.yml` | `.github/ISSUE_TEMPLATE/config.yml` |
+
+Az Issue Form feladás közben jól láthatóan jelzi a 3000 karakteres korlátot, és kötelező visszaigazolást kér. A `config.yml` kikapcsolja az üres Issue lehetőségét, így a webes felületen a figyelmeztetést tartalmazó űrlap lesz használható.
+
+A GitHub Issue Form nem támogat beépített dinamikus karakterszámlálót vagy `maxLength` validációt. Emiatt az alkalmazás a beállított korlátot szerveroldalon is kikényszeríti: a GitHubon tárolt Issue változatlan marad, de a Groqnak csak az első 3000 karaktert adja át, és a workflow-naplóban figyelmeztetést ír.
+
+## 5. Tesztelés
 
 Hozz létre **új** issue-t a tesztrepositoryban. A workflow az `opened` eseményre indul; egy régi futás `Re-run jobs` parancsa az adott futásban rögzített workflow-verziót használhatja, ezért Action- vagy workflow-frissítés után az új issue a biztos teszt.
 
@@ -86,13 +100,13 @@ Siker esetén a napló végén ez jelenik meg:
 
 Az email spam mappáját is ellenőrizd.
 
-## 5. Biztonsági és költségkorlátok
+## 6. Biztonsági és költségkorlátok
 
 - A csomag blokkolja a privát kérdés-repositoryt, és csak nyilvános NAV/GitHub-forrásokra készült.
 - Az Issue/Discussion szövegét és a talált publikus forrásokat a Groq szolgáltatás megkapja.
 - A GitHub-jogosultságok csak olvasási jogok.
 - Nincs automatikus válasz, komment vagy publikálás.
-- A Groq Free Plan jelenlegi `openai/gpt-oss-120b` limitje 30 kérés/perc, 1000 kérés/nap, 8000 token/perc és 200 000 token/nap. A csomag ezért korlátozza az elküldött forráskörnyezetet és a válasz hosszát. A limitek változhatnak; túllépéskor a workflow hibával leáll, és később újrapróbálható.
+- A Groq Free Plan jelenlegi `openai/gpt-oss-120b` limitje 30 kérés/perc, 1000 kérés/nap, 8000 token/perc és 200 000 token/nap. A csomag ezért 5000 karakterre korlátozza a rangsorolt előzetes forráskörnyezetet, és legfeljebb 1200 választokent kér. Ez biztonságos tartalékot hagy a promptnak és a böngészős keresésnek is. A limitek változhatnak; túllépéskor a workflow hibával leáll, és később újrapróbálható.
 - A Groq dokumentációja szerint a `browser_search` támogatott az `openai/gpt-oss-120b` modellen, és szerveroldalon fut; külön böngészőszolgáltatást nem kell telepíteni.
 
 ## Helyi/CI önellenőrzés

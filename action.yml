@@ -32,6 +32,10 @@ inputs:
   email-to:
     description: "Vesszővel elválasztott email-címzettek"
     required: true
+  question-max-chars:
+    description: "A Groqnak átadott Issue/Discussion szöveg maximális karakterszáma"
+    required: false
+    default: "3000"
   groq-model:
     description: "A Groq modellen belüli modellazonosító"
     required: false
@@ -79,6 +83,7 @@ runs:
         ASSISTANT_QUESTION_URL: ${{ inputs.question-url }}
         ASSISTANT_AUTHOR: ${{ inputs.author }}
         ASSISTANT_EMAIL_TO: ${{ inputs.email-to }}
+        ASSISTANT_QUESTION_MAX_CHARS: ${{ inputs.question-max-chars }}
         ASSISTANT_GROQ_MODEL: ${{ inputs.groq-model }}
         ASSISTANT_NAV_SEARCH: ${{ inputs.nav-gov-hu-search }}
         ASSISTANT_BROWSER_SEARCH: ${{ inputs.browser-search }}

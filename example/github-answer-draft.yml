@@ -30,6 +30,7 @@ jobs:
           question-url: ${{ github.event.issue.html_url }}
           author: ${{ github.event.issue.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
+          question-max-chars: ${{ vars.DRAFT_QUESTION_MAX_CHARS || '3000' }}
           groq-model: ${{ vars.DRAFT_GROQ_MODEL || 'openai/gpt-oss-120b' }}
           nav-gov-hu-search: "true"
           browser-search: "true"
@@ -62,6 +63,7 @@ jobs:
           question-url: ${{ github.event.discussion.html_url }}
           author: ${{ github.event.discussion.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
+          question-max-chars: ${{ vars.DRAFT_QUESTION_MAX_CHARS || '3000' }}
           groq-model: ${{ vars.DRAFT_GROQ_MODEL || 'openai/gpt-oss-120b' }}
           nav-gov-hu-search: "true"
           browser-search: "true"

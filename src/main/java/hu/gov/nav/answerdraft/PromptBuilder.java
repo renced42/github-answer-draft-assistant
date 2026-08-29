@@ -4,7 +4,9 @@ import java.util.*;
 
 final class PromptBuilder {
     static String build(Question q,List<Source> sources){
-        StringBuilder context=new StringBuilder();int budget=10000,index=1;
+        // A Groq Free Plan modellkorlátja 8000 token/perc. A böngészős
+        // keresésnek és a válasznak is maradjon biztos tartaléka.
+        StringBuilder context=new StringBuilder();int budget=5000,index=1;
         for(Source s:sources){String block="\n--- FORRÁS "+index+" ---\nCím: "+s.title()+"\nURL: "+s.url()+"\nTartalom:\n"+s.content()+"\n";if(context.length()+block.length()>budget)block=WebClient.shorten(block,Math.max(0,budget-context.length()));context.append(block);index++;if(context.length()>=budget)break;}
         return """
                 Szerep: magyar nyelvű, NAV technikai válasz-előkészítő vagy. Kizárólag tervezetet készítesz emberi ellenőrzéshez.
