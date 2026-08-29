@@ -8,10 +8,13 @@ A projekt a `nav-gov-hu` repository-k új Issue és Discussion kérdéseihez for
 
 1. Új Issue vagy Discussion érkezik.
 2. A GitHub Actions csak olvasási jogosultsággal elindítja az Actiont.
-3. A rendszer az organization Issue, Discussion és fájltartalmában keres.
+3. A rendszer az organization Issue, Discussion és fájltartalmában, valamint a publikus
+   `nav.gov.hu` eÁFA/eNyugta oldalakon keres.
 4. A Gemini vagy Groq kizárólag a talált forrásokból készít választervezetet.
 5. Az ingyenes Gmail SMTP elküldi a levelet. Microsoft Graph opcionálisan használható.
 6. A címzett ellenőrzi, javítja, majd kézzel publikálja a választ.
+
+A keresés magyar ragozott szavakat is normalizál, és nagy fájloknál a kulcsszó körüli releváns részletet adja át a modellnek az állomány eleje helyett.
 
 ## Címzett konfigurálása
 
@@ -38,9 +41,24 @@ Változók:
 | Változó | Alapérték | Példa |
 |---|---|---|
 | `DRAFT_AI_PROVIDER` | `gemini` | `gemini`, `groq` |
-| `DRAFT_AI_MODEL` | `gemini-2.5-flash` | szolgáltatói modellnév |
+| `DRAFT_AI_MODEL` | `gemini-3.6-flash` | szolgáltatói modellnév |
 
-Az ingyenes AI-szintre csak nyilvános GitHub-adat küldhető. A privát repository-k feldolgozása alapértelmezetten programból tiltott.
+Az ingyenes AI-szintre csak nyilvános GitHub- és NAV-weboldaladat küldhető. A privát repository-k feldolgozása alapértelmezetten programból tiltott.
+
+## NAV.GOV.HU-források
+
+A `nav-gov-hu-search` Action-bemenet alapértéke `true`. A rendszer kizárólag publikus,
+HTTPS-en elérhető HTML-oldalakat olvas a `nav.gov.hu/ado/eafa` és
+`nav.gov.hu/ado/enyugta` területekről. Egy futásban legfeljebb 12 kapcsolódó oldalt
+vizsgál meg, és a három legrelevánsabb NAV-forrást adja át a modellnek. Bejelentkezett
+oldalt, űrlapot vagy más domaint nem ér el; PDF-ek tartalmát ebben a verzióban nem dolgozza fel.
+
+Kikapcsolás a figyelő workflow-ban:
+
+```yaml
+with:
+  nav-gov-hu-search: "false"
+```
 
 ## Ingyenes emailküldés Gmail SMTP-vel
 
@@ -147,3 +165,4 @@ python3 -m unittest discover -s tests -v
 - a források tartalma nem megbízható adatként kerül a promptba;
 - a levél HTML-tartalma escape-elt;
 - a válaszban kötelező a forrás, a bizonytalanság és a bizonyosság feltüntetése.
+- átmeneti `408`, `429` és `5xx` API-hibáknál legfeljebb négyszer, exponenciális késleltetéssel és jitterrel próbálkozik újra.

@@ -7,15 +7,18 @@ import base64
 import html
 import json
 import os
+import random
 import re
 import smtplib
 import ssl
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from email.message import EmailMessage
+from html.parser import HTMLParser
 from typing import Any
 
 
@@ -23,12 +26,26 @@ USER_AGENT = "nav-gov-hu-github-answer-draft-assistant/1.0"
 MAX_SOURCE_CHARACTERS = 5_000
 MAX_CONTEXT_CHARACTERS = 30_000
 MAX_SOURCES = 8
+MAX_NAV_PAGES = 12
+MAX_NAV_SOURCES = 3
+RETRYABLE_HTTP_CODES = {408, 429, 500, 502, 503, 504}
+RETRY_DELAYS_SECONDS = (1, 2, 4, 8)
 STOP_WORDS = {
     "ahogy", "akkor", "alatt", "alapján", "amely", "amelyet", "amikor", "annak",
     "arra", "azért", "ebben", "egy", "egyik", "ennek", "hogy", "hogyan", "igen",
     "kell", "kellene", "lehet", "lesz", "meg", "melyik", "mert", "mint", "miért",
-    "nincs", "szeretnék", "tehát", "this", "that", "the", "with", "from", "have",
+    "adni", "nincs", "rendszer", "rendszerben", "szeretnék", "tehát", "tudnál", "tudok",
+    "this", "that", "the", "with", "from", "have",
     "what", "when", "where", "which", "would", "could", "should", "issue", "discussion",
+}
+KEYWORD_NORMALIZATIONS = {
+    "analitikát": "analitika",
+    "analitikával": "analitika",
+    "analitikából": "analitika",
+    "példát": "példa",
+    "feltölteni": "feltöltés",
+    "feltöltése": "feltöltés",
+    "feltöltését": "feltöltés",
 }
 
 
@@ -72,14 +89,195 @@ class HttpClient:
         elif form_body is not None:
             data = urllib.parse.urlencode(form_body).encode("utf-8")
             request_headers["Content-Type"] = "application/x-www-form-urlencoded"
-        request = urllib.request.Request(url, data=data, headers=request_headers, method=method)
+        for attempt in range(len(RETRY_DELAYS_SECONDS) + 1):
+            request = urllib.request.Request(url, data=data, headers=request_headers, method=method)
+            try:
+                with urllib.request.urlopen(request, timeout=45) as response:
+                    raw = response.read()
+                    return json.loads(raw.decode("utf-8")) if raw else None
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")[:2_000]
+                if exc.code not in RETRYABLE_HTTP_CODES or attempt == len(RETRY_DELAYS_SECONDS):
+                    raise RuntimeError(
+                        f"HTTP {exc.code} hiba a(z) {url} hívásakor: {detail}"
+                    ) from exc
+                delay = retry_delay(exc, attempt)
+                print(
+                    f"::warning::Átmeneti HTTP {exc.code} hiba. "
+                    f"Újrapróbálkozás {delay:.1f} másodperc múlva "
+                    f"({attempt + 1}/{len(RETRY_DELAYS_SECONDS)})."
+                )
+                time.sleep(delay)
+        raise AssertionError("A HTTP újrapróbálkozási ciklus váratlanul befejeződött.")
+
+    def request_text(self, url: str) -> str:
+        """Nyilvános HTML-oldalt tölt le, átmeneti hibáknál újrapróbálkozással."""
+        headers = {"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
+        for attempt in range(len(RETRY_DELAYS_SECONDS) + 1):
+            request = urllib.request.Request(url, headers=headers, method="GET")
+            try:
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    if "text/html" not in response.headers.get("Content-Type", ""):
+                        return ""
+                    return response.read(1_000_000).decode("utf-8", errors="replace")
+            except urllib.error.HTTPError as exc:
+                if exc.code not in RETRYABLE_HTTP_CODES or attempt == len(RETRY_DELAYS_SECONDS):
+                    raise RuntimeError(f"HTTP {exc.code} hiba a(z) {url} letöltésekor") from exc
+                time.sleep(retry_delay(exc, attempt))
+            except urllib.error.URLError as exc:
+                raise RuntimeError(f"Hálózati hiba a(z) {url} letöltésekor: {exc.reason}") from exc
+        raise AssertionError("A HTML újrapróbálkozási ciklus váratlanul befejeződött.")
+
+
+class NavHtmlParser(HTMLParser):
+    """A NAV-oldal címét, fő tartalmát és hivatkozásait nyeri ki."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.title_parts: list[str] = []
+        self.main_parts: list[str] = []
+        self.all_parts: list[str] = []
+        self.links: list[tuple[str, str]] = []
+        self._in_title = False
+        self._in_main = False
+        self._skip_depth = 0
+        self._link_href = ""
+        self._link_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag in {"script", "style", "noscript", "svg"}:
+            self._skip_depth += 1
+        if tag == "title":
+            self._in_title = True
+        if tag == "main":
+            self._in_main = True
+        if tag == "a":
+            self._link_href = attributes.get("href") or ""
+            self._link_parts = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style", "noscript", "svg"} and self._skip_depth:
+            self._skip_depth -= 1
+        if tag == "title":
+            self._in_title = False
+        if tag == "main":
+            self._in_main = False
+        if tag == "a" and self._link_href:
+            self.links.append((self._link_href, " ".join(self._link_parts).strip()))
+            self._link_href = ""
+            self._link_parts = []
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth:
+            return
+        value = " ".join(data.split())
+        if not value:
+            return
+        self.all_parts.append(value)
+        if self._in_title:
+            self.title_parts.append(value)
+        if self._in_main:
+            self.main_parts.append(value)
+        if self._link_href:
+            self._link_parts.append(value)
+
+    @property
+    def title(self) -> str:
+        return " ".join(self.title_parts).strip()
+
+    @property
+    def content(self) -> str:
+        return "\n".join(self.main_parts or self.all_parts)
+
+
+class NavGovHuClient:
+    """Korlátozott, csak publikus nav.gov.hu HTML-oldalakat olvasó kereső."""
+
+    SEEDS = {
+        "eafa": "https://nav.gov.hu/ado/eafa",
+        "enyugta": "https://nav.gov.hu/ado/enyugta",
+    }
+
+    def __init__(self, http: HttpClient):
+        self.http = http
+
+    def collect_sources(self, question: Question) -> list[Source]:
+        keywords = extract_keywords(f"{question.title} {question.body}")
+        pages: list[tuple[int, Source]] = []
+        candidates: list[tuple[int, str]] = []
+        visited: set[str] = set()
+        for seed in self._select_seeds(keywords):
+            parsed = self._fetch(seed)
+            if not parsed:
+                continue
+            visited.add(seed)
+            pages.append((self._score(parsed.title, parsed.content, keywords), self._source(seed, parsed, keywords)))
+            for href, label in parsed.links:
+                url = self._allowed_url(urllib.parse.urljoin(seed, href))
+                if url:
+                    candidates.append((self._score(label, url, keywords), url))
+        for _, url in sorted(candidates, reverse=True)[:MAX_NAV_PAGES]:
+            if url in visited:
+                continue
+            visited.add(url)
+            parsed = self._fetch(url)
+            if not parsed:
+                continue
+            score = self._score(parsed.title, parsed.content, keywords)
+            if score:
+                pages.append((score, self._source(url, parsed, keywords)))
+        pages.sort(key=lambda item: item[0], reverse=True)
+        return [source for _, source in pages[:MAX_NAV_SOURCES]]
+
+    def _select_seeds(self, keywords: list[str]) -> list[str]:
+        joined = " ".join(keywords).lower()
+        if any(word in joined for word in ("enyugta", "nyugta", "pénztárgép")):
+            return [self.SEEDS["enyugta"]]
+        if any(word in joined for word in ("eáfa", "eafa", "evat", "analitika", "áfa")):
+            return [self.SEEDS["eafa"]]
+        return list(self.SEEDS.values())
+
+    def _fetch(self, url: str) -> NavHtmlParser | None:
         try:
-            with urllib.request.urlopen(request, timeout=45) as response:
-                raw = response.read()
-                return json.loads(raw.decode("utf-8")) if raw else None
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:2_000]
-            raise RuntimeError(f"HTTP {exc.code} hiba a(z) {url} hívásakor: {detail}") from exc
+            raw = self.http.request_text(url)
+        except RuntimeError as exc:
+            print(f"::warning::NAV-oldal kihagyva: {exc}")
+            return None
+        if not raw:
+            return None
+        parser = NavHtmlParser()
+        parser.feed(raw)
+        return parser
+
+    @staticmethod
+    def _allowed_url(url: str) -> str | None:
+        parsed = urllib.parse.urlsplit(url)
+        if parsed.scheme != "https" or parsed.netloc.lower() != "nav.gov.hu":
+            return None
+        path = parsed.path.rstrip("/") or "/"
+        if not (path.startswith("/ado/eafa") or path.startswith("/ado/enyugta")):
+            return None
+        if re.search(r"\.(pdf|zip|docx?|xlsx?)$", path, re.IGNORECASE):
+            return None
+        return urllib.parse.urlunsplit(("https", "nav.gov.hu", path, parsed.query, ""))
+
+    @staticmethod
+    def _score(title: str, content: str, keywords: list[str]) -> int:
+        title_text = title.lower()
+        body_text = content.lower()
+        return sum(8 for word in keywords if word in title_text) + sum(
+            min(body_text.count(word), 5) for word in keywords
+        )
+
+    @staticmethod
+    def _source(url: str, parsed: NavHtmlParser, keywords: list[str]) -> Source:
+        return Source(
+            title=f"NAV.GOV.HU: {parsed.title or url}",
+            url=url,
+            content=relevant_excerpt(parsed.content, keywords),
+            repository="nav.gov.hu",
+        )
 
 
 class GitHubClient:
@@ -106,9 +304,9 @@ class GitHubClient:
     def collect_sources(self, question: Question) -> list[Source]:
         keywords = extract_keywords(f"{question.title} {question.body}")
         sources: list[Source] = []
-        sources.extend(self._search_issues(keywords, question.url))
-        sources.extend(self._search_discussions(keywords, question.url))
         sources.extend(self._search_code(keywords))
+        sources.extend(self._search_discussions(keywords, question.url))
+        sources.extend(self._search_issues(keywords, question.url))
         unique: list[Source] = []
         seen: set[str] = set()
         for source in sources:
@@ -190,7 +388,7 @@ class GitHubClient:
                 sources.append(Source(
                     title=f"{repo.get('full_name')}: {item.get('path')}",
                     url=item.get("html_url"),
-                    content=limit_text(content),
+                    content=relevant_excerpt(content, keywords),
                     repository=repo.get("full_name", ""),
                 ))
         return sources
@@ -349,7 +547,7 @@ def extract_keywords(text: str) -> list[str]:
     words = re.findall(r"[A-Za-zÀ-ž0-9_.-]{4,}", text.lower())
     result: list[str] = []
     for word in words:
-        normalized = word.strip("._-")
+        normalized = KEYWORD_NORMALIZATIONS.get(word.strip("._-"), word.strip("._-"))
         if normalized in STOP_WORDS or normalized in result or normalized.isdigit():
             continue
         result.append(normalized)
@@ -446,6 +644,28 @@ def limit_text(value: str) -> str:
     return value[:MAX_SOURCE_CHARACTERS]
 
 
+def relevant_excerpt(value: str, keywords: list[str]) -> str:
+    """A teljes fájl eleje helyett az első releváns kulcsszó környezetét adja vissza."""
+    lowered = value.lower()
+    positions = [lowered.find(keyword.lower()) for keyword in keywords]
+    matches = [position for position in positions if position >= 0]
+    if not matches:
+        return limit_text(value)
+    start = max(0, min(matches) - 1_500)
+    return value[start:start + MAX_SOURCE_CHARACTERS]
+
+
+def retry_delay(exc: urllib.error.HTTPError, attempt: int) -> float:
+    """Retry-After hiányában exponenciális késleltetést ad véletlen jitterrel."""
+    retry_after = exc.headers.get("Retry-After") if exc.headers else None
+    if retry_after:
+        try:
+            return min(float(retry_after), 60.0)
+        except ValueError:
+            pass
+    return RETRY_DELAYS_SECONDS[attempt] + random.uniform(0.0, 0.5)
+
+
 def main() -> None:
     question = Question(
         kind=required_env("ASSISTANT_EVENT_KIND"),
@@ -465,11 +685,13 @@ def main() -> None:
         allow_private=bool_env("ASSISTANT_ALLOW_PRIVATE_SOURCES"),
     )
     github.verify_source_repository(question.repository)
-    sources = github.collect_sources(question)
+    github_sources = github.collect_sources(question)
+    nav_sources = NavGovHuClient(http).collect_sources(question) if bool_env("ASSISTANT_NAV_SEARCH") else []
+    sources = github_sources[:5] + nav_sources[:3]
     draft = AiClient(
         http=http,
         provider=os.getenv("ASSISTANT_AI_PROVIDER", "gemini"),
-        model=os.getenv("ASSISTANT_AI_MODEL", "gemini-2.5-flash"),
+        model=os.getenv("ASSISTANT_AI_MODEL", "gemini-3.6-flash"),
         api_key=required_env("AI_API_KEY"),
     ).generate(build_prompt(question, sources))
     subject, text_body, html_body = build_email(question, draft)

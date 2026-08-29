@@ -28,8 +28,9 @@ jobs:
           author: ${{ github.event.issue.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
           ai-provider: ${{ vars.DRAFT_AI_PROVIDER || 'gemini' }}
-          ai-model: ${{ vars.DRAFT_AI_MODEL || 'gemini-2.5-flash' }}
+          ai-model: ${{ vars.DRAFT_AI_MODEL || 'gemini-3.6-flash' }}
           mail-provider: ${{ vars.DRAFT_MAIL_PROVIDER || 'smtp' }}
+          nav-gov-hu-search: "true"
         env:
           GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -60,8 +61,9 @@ jobs:
           author: ${{ github.event.discussion.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
           ai-provider: ${{ vars.DRAFT_AI_PROVIDER || 'gemini' }}
-          ai-model: ${{ vars.DRAFT_AI_MODEL || 'gemini-2.5-flash' }}
+          ai-model: ${{ vars.DRAFT_AI_MODEL || 'gemini-3.6-flash' }}
           mail-provider: ${{ vars.DRAFT_MAIL_PROVIDER || 'smtp' }}
+          nav-gov-hu-search: "true"
         env:
           GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}

@@ -39,7 +39,7 @@ inputs:
   ai-model:
     description: A szolgáltatónál használt modell neve
     required: false
-    default: gemini-2.5-flash
+    default: gemini-3.6-flash
   mail-provider:
     description: graph vagy smtp
     required: false
@@ -48,6 +48,10 @@ inputs:
     description: Engedélyezettek-e privát repository-k forrásként
     required: false
     default: "false"
+  nav-gov-hu-search:
+    description: Keressen-e publikus forrásokat a nav.gov.hu eÁFA/eNyugta oldalain is
+    required: false
+    default: "true"
   dry-run:
     description: Emailküldés helyett csak a workflow naplójába ír
     required: false
@@ -72,5 +76,6 @@ runs:
         ASSISTANT_AI_MODEL: ${{ inputs.ai-model }}
         ASSISTANT_MAIL_PROVIDER: ${{ inputs.mail-provider }}
         ASSISTANT_ALLOW_PRIVATE_SOURCES: ${{ inputs.allow-private-sources }}
+        ASSISTANT_NAV_SEARCH: ${{ inputs.nav-gov-hu-search }}
         ASSISTANT_DRY_RUN: ${{ inputs.dry-run }}
       run: python3 "$GITHUB_ACTION_PATH/src/main.py"
