@@ -1,0 +1,77 @@
+name: GitHub választervezet emailben
+
+on:
+  issues:
+    types: [opened]
+  discussion:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+  discussions: read
+
+jobs:
+  issue-draft:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Issue választervezet
+        uses: nav-gov-hu/github-answer-draft-assistant@v1
+        with:
+          event-kind: issue
+          repository: ${{ github.repository }}
+          number: ${{ github.event.issue.number }}
+          title: ${{ github.event.issue.title }}
+          body: ${{ github.event.issue.body }}
+          question-url: ${{ github.event.issue.html_url }}
+          author: ${{ github.event.issue.user.login }}
+          email-to: ${{ vars.DRAFT_EMAIL_TO }}
+          ai-provider: ${{ vars.DRAFT_AI_PROVIDER || 'gemini' }}
+          ai-model: ${{ vars.DRAFT_AI_MODEL || 'gemini-2.5-flash' }}
+          mail-provider: ${{ vars.DRAFT_MAIL_PROVIDER || 'smtp' }}
+        env:
+          GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          GRAPH_TENANT_ID: ${{ secrets.GRAPH_TENANT_ID }}
+          GRAPH_CLIENT_ID: ${{ secrets.GRAPH_CLIENT_ID }}
+          GRAPH_CLIENT_SECRET: ${{ secrets.GRAPH_CLIENT_SECRET }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_STARTTLS: ${{ secrets.SMTP_STARTTLS }}
+
+  discussion-draft:
+    if: github.event_name == 'discussion'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discussion választervezet
+        uses: nav-gov-hu/github-answer-draft-assistant@v1
+        with:
+          event-kind: discussion
+          repository: ${{ github.repository }}
+          number: ${{ github.event.discussion.number }}
+          title: ${{ github.event.discussion.title }}
+          body: ${{ github.event.discussion.body }}
+          question-url: ${{ github.event.discussion.html_url }}
+          author: ${{ github.event.discussion.user.login }}
+          email-to: ${{ vars.DRAFT_EMAIL_TO }}
+          ai-provider: ${{ vars.DRAFT_AI_PROVIDER || 'gemini' }}
+          ai-model: ${{ vars.DRAFT_AI_MODEL || 'gemini-2.5-flash' }}
+          mail-provider: ${{ vars.DRAFT_MAIL_PROVIDER || 'smtp' }}
+        env:
+          GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          GRAPH_TENANT_ID: ${{ secrets.GRAPH_TENANT_ID }}
+          GRAPH_CLIENT_ID: ${{ secrets.GRAPH_CLIENT_ID }}
+          GRAPH_CLIENT_SECRET: ${{ secrets.GRAPH_CLIENT_SECRET }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_STARTTLS: ${{ secrets.SMTP_STARTTLS }}

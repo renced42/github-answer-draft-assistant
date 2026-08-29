@@ -1,0 +1,76 @@
+name: GitHub Answer Draft Assistant
+description: Forrásalapú választervezetet készít, majd emailben elküldi. GitHubra nem publikál.
+
+inputs:
+  organization:
+    description: A kereséshez használt GitHub organization.
+    required: false
+    default: nav-gov-hu
+  event-kind:
+    description: issue vagy discussion
+    required: true
+  repository:
+    description: owner/repository formátumú forrásrepository
+    required: true
+  number:
+    description: Az Issue vagy Discussion sorszáma
+    required: true
+  title:
+    description: A kérdés címe
+    required: true
+  body:
+    description: A kérdés szövege
+    required: false
+    default: ""
+  question-url:
+    description: Az eredeti GitHub-kérdés URL-je
+    required: true
+  author:
+    description: A kérdés szerzőjének GitHub-neve
+    required: false
+    default: ismeretlen
+  email-to:
+    description: Vesszővel elválasztott email-címzettek
+    required: true
+  ai-provider:
+    description: gemini vagy groq
+    required: false
+    default: gemini
+  ai-model:
+    description: A szolgáltatónál használt modell neve
+    required: false
+    default: gemini-2.5-flash
+  mail-provider:
+    description: graph vagy smtp
+    required: false
+    default: smtp
+  allow-private-sources:
+    description: Engedélyezettek-e privát repository-k forrásként
+    required: false
+    default: "false"
+  dry-run:
+    description: Emailküldés helyett csak a workflow naplójába ír
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Választervezet elkészítése és elküldése
+      shell: bash
+      env:
+        ASSISTANT_ORGANIZATION: ${{ inputs.organization }}
+        ASSISTANT_EVENT_KIND: ${{ inputs.event-kind }}
+        ASSISTANT_REPOSITORY: ${{ inputs.repository }}
+        ASSISTANT_NUMBER: ${{ inputs.number }}
+        ASSISTANT_TITLE: ${{ inputs.title }}
+        ASSISTANT_BODY: ${{ inputs.body }}
+        ASSISTANT_QUESTION_URL: ${{ inputs.question-url }}
+        ASSISTANT_AUTHOR: ${{ inputs.author }}
+        ASSISTANT_EMAIL_TO: ${{ inputs.email-to }}
+        ASSISTANT_AI_PROVIDER: ${{ inputs.ai-provider }}
+        ASSISTANT_AI_MODEL: ${{ inputs.ai-model }}
+        ASSISTANT_MAIL_PROVIDER: ${{ inputs.mail-provider }}
+        ASSISTANT_ALLOW_PRIVATE_SOURCES: ${{ inputs.allow-private-sources }}
+        ASSISTANT_DRY_RUN: ${{ inputs.dry-run }}
+      run: python3 "$GITHUB_ACTION_PATH/src/main.py"
