@@ -19,7 +19,7 @@ jobs:
       name: Github assistant
     steps:
       - name: Issue választervezet
-        uses: renced42/github-answer-draft-assistant@v2.0.0
+        uses: renced42/github-answer-draft-assistant@v2.0.1
         with:
           event-kind: issue
           repository: ${{ github.repository }}
@@ -46,7 +46,7 @@ jobs:
       name: Github assistant
     steps:
       - name: Discussion választervezet
-        uses: renced42/github-answer-draft-assistant@v2.0.0
+        uses: renced42/github-answer-draft-assistant@v2.0.1
         with:
           event-kind: discussion
           repository: ${{ github.repository }}
