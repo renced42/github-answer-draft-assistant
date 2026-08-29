@@ -1,69 +1,61 @@
-name: GitHub Answer Draft Assistant
-description: Forrásalapú választervezetet készít, majd emailben elküldi. GitHubra nem publikál.
+name: "GitHub választervezet ChatGPT Workspace Agenttel"
+description: "Workspace Agent futtatása és a ChatGPT-beszélgetés linkjének elküldése emailben"
 
 inputs:
-  organization:
-    description: A kereséshez használt GitHub organization.
-    required: false
-    default: nav-gov-hu
   event-kind:
-    description: issue vagy discussion
+    description: "issue vagy discussion"
     required: true
   repository:
-    description: owner/repository formátumú forrásrepository
+    description: "Tulajdonos/repository"
     required: true
   number:
-    description: Az Issue vagy Discussion sorszáma
+    description: "Issue vagy Discussion sorszáma"
     required: true
   title:
-    description: A kérdés címe
+    description: "A kérdés címe"
     required: true
   body:
-    description: A kérdés szövege
+    description: "A kérdés szövege"
     required: false
     default: ""
   question-url:
-    description: Az eredeti GitHub-kérdés URL-je
+    description: "Az eredeti GitHub-kérdés URL-je"
     required: true
   author:
-    description: A kérdés szerzőjének GitHub-neve
+    description: "A kérdező GitHub-neve"
     required: false
-    default: ismeretlen
+    default: "ismeretlen"
   email-to:
-    description: Vesszővel elválasztott email-címzettek
+    description: "Címzettek vesszővel elválasztva"
     required: true
-  ai-provider:
-    description: gemini vagy groq
+  workspace-agent-trigger-id:
+    description: "A közzétett Workspace Agent triggerazonosítója (agtch_...)"
+    required: true
+  poll-timeout-seconds:
+    description: "Legfeljebb ennyi ideig vár az Agentre"
     required: false
-    default: gemini
-  ai-model:
-    description: A szolgáltatónál használt modell neve
-    required: false
-    default: gemini-3.6-flash
-  mail-provider:
-    description: graph vagy smtp
-    required: false
-    default: smtp
-  allow-private-sources:
-    description: Engedélyezettek-e privát repository-k forrásként
-    required: false
-    default: "false"
-  nav-gov-hu-search:
-    description: Keressen-e publikus forrásokat a nav.gov.hu eÁFA/eNyugta oldalain is
-    required: false
-    default: "true"
-  dry-run:
-    description: Emailküldés helyett csak a workflow naplójába ír
-    required: false
-    default: "false"
+    default: "900"
 
 runs:
   using: composite
   steps:
-    - name: Választervezet elkészítése és elküldése
+    - name: Java 21 beállítása
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "21"
+
+    - name: Java alkalmazás fordítása
+      shell: bash
+      run: |
+        BUILD_DIR="${RUNNER_TEMP}/github-answer-workspace-agent"
+        mkdir -p "${BUILD_DIR}"
+        find "${GITHUB_ACTION_PATH}/src/main/java" -name '*.java' -print0 \
+          | xargs -0 javac --release 21 -encoding UTF-8 -d "${BUILD_DIR}"
+
+    - name: Választervezet indítása és email küldése
       shell: bash
       env:
-        ASSISTANT_ORGANIZATION: ${{ inputs.organization }}
         ASSISTANT_EVENT_KIND: ${{ inputs.event-kind }}
         ASSISTANT_REPOSITORY: ${{ inputs.repository }}
         ASSISTANT_NUMBER: ${{ inputs.number }}
@@ -72,10 +64,8 @@ runs:
         ASSISTANT_QUESTION_URL: ${{ inputs.question-url }}
         ASSISTANT_AUTHOR: ${{ inputs.author }}
         ASSISTANT_EMAIL_TO: ${{ inputs.email-to }}
-        ASSISTANT_AI_PROVIDER: ${{ inputs.ai-provider }}
-        ASSISTANT_AI_MODEL: ${{ inputs.ai-model }}
-        ASSISTANT_MAIL_PROVIDER: ${{ inputs.mail-provider }}
-        ASSISTANT_ALLOW_PRIVATE_SOURCES: ${{ inputs.allow-private-sources }}
-        ASSISTANT_NAV_SEARCH: ${{ inputs.nav-gov-hu-search }}
-        ASSISTANT_DRY_RUN: ${{ inputs.dry-run }}
-      run: python3 "$GITHUB_ACTION_PATH/src/main.py"
+        WORKSPACE_AGENT_TRIGGER_ID: ${{ inputs.workspace-agent-trigger-id }}
+        ASSISTANT_POLL_TIMEOUT_SECONDS: ${{ inputs.poll-timeout-seconds }}
+      run: |
+        java -cp "${RUNNER_TEMP}/github-answer-workspace-agent" \
+          hu.gov.nav.answerdraft.Main

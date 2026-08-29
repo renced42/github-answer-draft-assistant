@@ -1,0 +1,65 @@
+name: GitHub választervezet ChatGPT-ben
+
+on:
+  issues:
+    types: [opened]
+  discussion:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: read
+  discussions: read
+
+jobs:
+  issue-draft:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    environment: Github assistant
+    steps:
+      - name: Issue választervezet
+        uses: renced42/github-answer-draft-assistant@v2.0.0
+        with:
+          event-kind: issue
+          repository: ${{ github.repository }}
+          number: ${{ github.event.issue.number }}
+          title: ${{ github.event.issue.title }}
+          body: ${{ github.event.issue.body }}
+          question-url: ${{ github.event.issue.html_url }}
+          author: ${{ github.event.issue.user.login }}
+          email-to: ${{ vars.DRAFT_EMAIL_TO }}
+          workspace-agent-trigger-id: ${{ vars.WORKSPACE_AGENT_TRIGGER_ID }}
+        env:
+          WORKSPACE_AGENT_ACCESS_TOKEN: ${{ secrets.WORKSPACE_AGENT_ACCESS_TOKEN }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_STARTTLS: ${{ secrets.SMTP_STARTTLS }}
+
+  discussion-draft:
+    if: github.event_name == 'discussion'
+    runs-on: ubuntu-latest
+    environment: Github assistant
+    steps:
+      - name: Discussion választervezet
+        uses: renced42/github-answer-draft-assistant@v2.0.0
+        with:
+          event-kind: discussion
+          repository: ${{ github.repository }}
+          number: ${{ github.event.discussion.number }}
+          title: ${{ github.event.discussion.title }}
+          body: ${{ github.event.discussion.body }}
+          question-url: ${{ github.event.discussion.html_url }}
+          author: ${{ github.event.discussion.user.login }}
+          email-to: ${{ vars.DRAFT_EMAIL_TO }}
+          workspace-agent-trigger-id: ${{ vars.WORKSPACE_AGENT_TRIGGER_ID }}
+        env:
+          WORKSPACE_AGENT_ACCESS_TOKEN: ${{ secrets.WORKSPACE_AGENT_ACCESS_TOKEN }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_STARTTLS: ${{ secrets.SMTP_STARTTLS }}

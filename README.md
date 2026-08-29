@@ -1,168 +1,116 @@
-# GitHub Answer Draft Assistant
+# GitHub Answer Workspace Agent – Java V2
 
-A projekt a `nav-gov-hu` repository-k új Issue és Discussion kérdéseihez forrásalapú magyar választervezetet készít, majd emailben elküldi az ellenőrző személynek.
+Ez a GitHub Action új Issue vagy Discussion létrehozásakor elindít egy ChatGPT Workspace Agentet.
+Az Agent a nyilvános `nav-gov-hu` repository-kban és a NAV hivatalos weboldalain kutat, majd egy
+ChatGPT-beszélgetésben választervezetet készít. A Java alkalmazás megvárja a futás végét, és Gmail
+SMTP-n elküldi a beszélgetés linkjét a konfigurált címre.
 
-**A rendszer soha nem publikál választ a GitHubon.** Az emailben lévő GitHub-link megnyitása után a véglegesített választ kézzel kell bemásolni.
+Az Action **nem publikál választ GitHubon**, és nincs GitHub írási jogosultsága.
 
-## Folyamat
+## Miért link érkezik, nem a válasz teljes szövege?
 
-1. Új Issue vagy Discussion érkezik.
-2. A GitHub Actions csak olvasási jogosultsággal elindítja az Actiont.
-3. A rendszer az organization Issue, Discussion és fájltartalmában, valamint a publikus
-   `nav.gov.hu` eÁFA/eNyugta oldalakon keres.
-4. A Gemini vagy Groq kizárólag a talált forrásokból készít választervezetet.
-5. Az ingyenes Gmail SMTP elküldi a levelet. Microsoft Graph opcionálisan használható.
-6. A címzett ellenőrzi, javítja, majd kézzel publikálja a választ.
+A Workspace Agent Trigger Runs API jelenleg visszaadja a futás állapotát és a beszélgetés URL-jét,
+de az Agent válaszának teljes szövege nem kérhető le az API-ból. Emiatt az email a kérdést, az
+eredeti GitHub-linket és a kész ChatGPT-beszélgetés linkjét tartalmazza.
 
-A keresés magyar ragozott szavakat is normalizál, és nagy fájloknál a kulcsszó körüli releváns részletet adja át a modellnek az állomány eleje helyett.
+## 1. Workspace Agent létrehozása
 
-## Címzett konfigurálása
+1. ChatGPT Workben hozz létre egy új Agentet.
+2. Másold be az `agent/NAV_ANSWER_AGENT_INSTRUCTIONS.md` tartalmát az Agent utasításaihoz.
+3. Adj neki hozzáférést a GitHub nyilvános tartalmaihoz és a webes kereséshez.
+4. A GitHub-kapcsolat csak olvasási jogosultságú legyen. Ne adj publikálási vagy írási eszközt.
+5. Tedd közzé az Agent API trigger csatornáját.
+6. Jegyezd fel az `agtch_...` alakú triggerazonosítót.
+7. Hozz létre Workspace Agent access tokent.
 
-A figyelt repository vagy a teljes organization Actions változói között hozd létre:
+Hivatalos API-leírás: <https://developers.openai.com/workspace-agents/trigger-runs>
 
-| Név | Kezdőérték |
-|---|---|
-| `DRAFT_EMAIL_TO` | `rencenji.denes@gmail.com` |
+## 2. Az Action repository frissítése
 
-Az érték kódmódosítás nélkül átírható. Több címzett vesszővel választható el.
-
-## AI konfiguráció
-
-Szükséges secret:
-
-| Secret | Tartalom |
-|---|---|
-| `AI_API_KEY` | Gemini vagy Groq API-kulcs |
-
-Gemini esetén a Google AI Studio aktuális „auth key” típusú kulcsát használd. A kulcsot a program a hivatalos `x-goog-api-key` HTTP-fejlécben továbbítja.
-
-Változók:
-
-| Változó | Alapérték | Példa |
-|---|---|---|
-| `DRAFT_AI_PROVIDER` | `gemini` | `gemini`, `groq` |
-| `DRAFT_AI_MODEL` | `gemini-3.6-flash` | szolgáltatói modellnév |
-
-Az ingyenes AI-szintre csak nyilvános GitHub- és NAV-weboldaladat küldhető. A privát repository-k feldolgozása alapértelmezetten programból tiltott.
-
-## NAV.GOV.HU-források
-
-A `nav-gov-hu-search` Action-bemenet alapértéke `true`. A rendszer kizárólag publikus,
-HTTPS-en elérhető HTML-oldalakat olvas a `nav.gov.hu/ado/eafa` és
-`nav.gov.hu/ado/enyugta` területekről. Egy futásban legfeljebb 12 kapcsolódó oldalt
-vizsgál meg, és a három legrelevánsabb NAV-forrást adja át a modellnek. Bejelentkezett
-oldalt, űrlapot vagy más domaint nem ér el; PDF-ek tartalmát ebben a verzióban nem dolgozza fel.
-
-Kikapcsolás a figyelő workflow-ban:
-
-```yaml
-with:
-  nav-gov-hu-search: "false"
-```
-
-## Ingyenes emailküldés Gmail SMTP-vel
-
-Változó:
-
-| Név | Érték |
-|---|---|
-| `DRAFT_MAIL_PROVIDER` | `smtp` |
-
-Szükséges secretek:
-
-| Secret | Tartalom |
-|---|---|
-| `SMTP_HOST` | `smtp.gmail.com` |
-| `SMTP_PORT` | `465` |
-| `SMTP_USERNAME` | a küldő Gmail-cím |
-| `SMTP_PASSWORD` | 16 karakteres Google alkalmazásjelszó |
-| `SMTP_STARTTLS` | `false` |
-| `MAIL_FROM` | a küldő Gmail-cím |
-
-A `SMTP_PASSWORD` nem a Google-fiók normál jelszava. A Google-fiókban kétlépcsős azonosítást kell bekapcsolni, majd külön alkalmazásjelszót kell létrehozni. A feladó és a `DRAFT_EMAIL_TO` címzett egyaránt lehet `rencenji.denes@gmail.com`.
-
-Ajánlott induló beállítás:
-
-```text
-DRAFT_EMAIL_TO=rencenji.denes@gmail.com
-DRAFT_MAIL_PROVIDER=smtp
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_USERNAME=rencenji.denes@gmail.com
-SMTP_STARTTLS=false
-MAIL_FROM=rencenji.denes@gmail.com
-```
-
-Ezek közül a `DRAFT_EMAIL_TO`, `DRAFT_MAIL_PROVIDER` lehet GitHub Actions Variable; az SMTP-adatokat és különösen az alkalmazásjelszót GitHub Actions Secretként kell felvenni.
-
-## Opcionális Microsoft Graph levélküldés
-
-Változó:
-
-| Név | Érték |
-|---|---|
-| `DRAFT_MAIL_PROVIDER` | `graph` |
-
-Szükséges secretek:
-
-| Secret | Tartalom |
-|---|---|
-| `GRAPH_TENANT_ID` | Microsoft Entra tenant azonosító |
-| `GRAPH_CLIENT_ID` | alkalmazásregisztráció kliensazonosító |
-| `GRAPH_CLIENT_SECRET` | alkalmazás secretje |
-| `MAIL_FROM` | dedikált feladó postafiók |
-
-Az alkalmazásnak Graph `Mail.Send` application permission szükséges. Exchange Online Application RBAC segítségével a jogosultságot kizárólag a dedikált feladó postafiókra kell szűkíteni. Ez nem része az alapértelmezett, ingyenes PoC-nak.
-
-## Költségkorlát
-
-Az alapértelmezett összeállítás nem tartalmaz fizetős szolgáltatást:
-
-- nyilvános repository GitHub-hosted Actions futása;
-- Gemini Developer API Free Tier vagy Groq Free Plan;
-- Gmail SMTP;
-- GitHub organization/repository változók és Secrets.
-
-A rendszer nem tartalmaz fizetős API-ra automatikus átváltást. Ingyenes limit kimerülésekor az adott futás sikertelen lesz, ezért nem keletkezhet észrevétlen költség. A szolgáltatói fiókban se engedélyezz automatikus fizetős számlázásra váltást.
-
-## GitHub-hozzáférés
-
-Nyilvános repository-khoz a workflow automatikus `GITHUB_TOKEN` értéke elegendő lehet. Organization-szintű vagy privát kereséshez add meg az `ORG_READ_TOKEN` secretet, kizárólag olvasási jogosultsággal.
-
-Az Action nem tartalmaz GitHub-írási műveletet. A telepítő workflow jogosultságai:
-
-```yaml
-permissions:
-  contents: read
-  issues: read
-  discussions: read
-```
-
-## Telepítés
-
-1. Hozd létre a `nav-gov-hu/github-answer-draft-assistant` repository-t.
-2. Másold bele ennek a csomagnak a tartalmát.
-3. Készíts `v1` release taget.
-4. Másold az `examples/github-answer-draft.yml` fájlt minden figyelt repository `.github/workflows/` könyvtárába.
-5. Állítsd be a fenti organization változókat és secreteket.
-6. Először egy tesztrepository-ban, `dry-run: "true"` bemenettel próbáld ki.
-7. Sikeres próba után töröld a `dry-run` sort vagy állítsd `false` értékre.
-
-Fontos: a Discussion esemény csak akkor fut, ha a workflow a repository alapértelmezett ágán található. A GitHub a Discussion workflow eseményeket jelenleg public preview funkcióként dokumentálja.
-
-## Helyi teszt
+1. Nyisd meg a meglévő `renced42/github-answer-draft-assistant` repository-t.
+2. Másold bele ennek a csomagnak a tartalmát. A gyökérben lévő `action.yml` írja felül a V1 fájlját.
+3. Commitold és pushold a fájlokat az alapértelmezett branchre.
+4. Készíts az új commitra `v2.0.0` nevű, kisbetűs taget és ugyanilyen Release-t.
 
 ```bash
-python3 -m unittest discover -s tests -v
+git tag v2.0.0
+git push origin v2.0.0
 ```
 
-## Biztonsági tulajdonságok
+A ZIP-fájlt nem kell feltölteni a Release assetjei közé. A GitHub Action a taghez tartozó repository-
+fájlokat használja; ezért az `action.yml` és a `src/` könyvtár legyen benne a tag commitjában.
 
-- nincs automatikus GitHub-publikálás;
-- alapértelmezetten nincs privát forrás;
-- minden GitHub-művelet csak olvasás;
-- a kulcsok GitHub Secretsben maradnak;
-- a források tartalma nem megbízható adatként kerül a promptba;
-- a levél HTML-tartalma escape-elt;
-- a válaszban kötelező a forrás, a bizonytalanság és a bizonyosság feltüntetése.
-- átmeneti `408`, `429` és `5xx` API-hibáknál legfeljebb négyszer, exponenciális késleltetéssel és jitterrel próbálkozik újra.
+## 3. Teszt repository environment beállítása
+
+A `renced42/github-answer-draft-test` repository-ban nyisd meg:
+
+`Settings → Environments → Github assistant`
+
+Environment variable:
+
+| Név | Érték |
+|---|---|
+| `DRAFT_EMAIL_TO` | `rencenji.denes@gmail.com` vagy más cím |
+| `WORKSPACE_AGENT_TRIGGER_ID` | az `agtch_...` azonosító |
+
+Environment secrets:
+
+| Név | Érték |
+|---|---|
+| `WORKSPACE_AGENT_ACCESS_TOKEN` | Workspace Agent access token |
+| `MAIL_FROM` | a küldő Gmail-cím |
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_USERNAME` | a küldő Gmail-cím |
+| `SMTP_PASSWORD` | Google alkalmazásjelszó, szóközök nélkül |
+| `SMTP_STARTTLS` | `true` |
+
+A korábbi `AI_API_KEY`, `DRAFT_AI_PROVIDER`, `DRAFT_AI_MODEL` és `ORG_READ_TOKEN` nem szükséges.
+
+## 4. Workflow telepítése
+
+Másold a csomag `.github/workflows/github-answer-draft.yml` fájlját a teszt repository azonos
+útvonalára. A két jobban szereplő alábbi sor szükséges ahhoz, hogy az environment változói és
+secretjei elérhetők legyenek:
+
+```yaml
+environment: Github assistant
+```
+
+Ha az Action repository-d neve eltér, módosítsd mindkét `uses:` sort. A tag kis- és
+nagybetűérzékeny: `@v2.0.0`, nem `@V2.0.0`.
+
+## 5. Tesztelés
+
+Hozz létre új Issue-t a teszt repository-ban. A futást itt látod:
+
+`Actions → GitHub választervezet ChatGPT-ben`
+
+A logban várhatóan ezek jelennek meg:
+
+```text
+Workspace Agent indítása: https://github.com/...
+Workspace Agent állapota: queued
+Workspace Agent állapota: in_progress
+A ChatGPT-beszélgetés linkjét tartalmazó email elküldve: 1 címzett.
+```
+
+Az Agent futása néhány percet is igénybe vehet. A kód legfeljebb 15 percig vár.
+
+## 6. Helyi Java-ellenőrzés
+
+Java 21 mellett:
+
+```bash
+chmod +x scripts/test.sh
+./scripts/test.sh
+```
+
+Nincs Maven- vagy külső Java-függőség; az Action futás közben `javac`-kal fordít.
+
+## Költség
+
+Az Action nem használ Gemini- vagy OpenAI Platform API-kulcsot. A GitHub publikus repository standard
+runnerhasználata általában nem jelent külön Actions-költséget. A Workspace Agent futtatása azonban a
+ChatGPT Workspace csomagodhoz tartozó Work/credit keretet használhat; ezért a teljes működés csak akkor
+marad külön díj nélküli, ha a meglévő workspace-keretbe belefér és nincs engedélyezett túlfogyasztás.
