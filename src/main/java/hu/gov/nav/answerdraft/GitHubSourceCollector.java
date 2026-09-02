@@ -3,20 +3,31 @@ package hu.gov.nav.answerdraft;
 import java.net.URI; import java.nio.charset.StandardCharsets; import java.util.*; import java.util.regex.*;
 
 final class GitHubSourceCollector {
-    private final WebClient http; private final Config config; private final Map<String,String> headers;
+    private static final String RATE_LIMIT_WARNING="A GitHub Search API ideiglenes sebességkorlátba ütközött (HTTP 429). A választervezet NAV-webes és AI internetes kereséssel elkészült, de a GitHub-források részlegesek lehetnek.";
+    private final WebClient http; private final Config config; private final Map<String,String> headers; private final List<String> warnings=new ArrayList<>();
     GitHubSourceCollector(WebClient http,Config config){this.http=http;this.config=config;this.headers=config.githubToken().isBlank()?Map.of("Accept","application/vnd.github+json"):Map.of("Accept","application/vnd.github+json","Authorization","Bearer "+config.githubToken(),"X-GitHub-Api-Version","2022-11-28");}
 
     List<Source> collect(Question question){
         ensureQuestionRepositoryPublic();
         List<String> keys=KeywordExtractor.extract(question); List<Source> found=new ArrayList<>();
         List<String> searches=queries(keys);
-        for(String terms:searches){ found.addAll(searchCode(terms)); found.addAll(searchIssues(terms)); }
-        found.addAll(searchDiscussions(searches));
+        boolean rateLimited=false;
+        for(String terms:searches){
+            try{found.addAll(searchCode(terms));}catch(WebClient.HttpStatusException x){if(x.status()==429){rateLimited=true;warnOnce(RATE_LIMIT_WARNING);break;}warn("GitHub kódkeresés sikertelen: "+x.getMessage());}
+            catch(Exception x){warn("GitHub kódkeresés sikertelen: "+x.getMessage());}
+            try{found.addAll(searchIssues(terms));}catch(WebClient.HttpStatusException x){if(x.status()==429){rateLimited=true;warnOnce(RATE_LIMIT_WARNING);break;}warn("GitHub issue-keresés sikertelen: "+x.getMessage());}
+            catch(Exception x){warn("GitHub issue-keresés sikertelen: "+x.getMessage());}
+        }
+        if(!rateLimited)found.addAll(searchDiscussions(searches));
         found=dedupe(found); found.sort(Comparator.comparingInt(Source::score).reversed());
         List<Source> selected=new ArrayList<>(found.stream().limit(9).toList());
         followSchemaImports(selected,found);
         return dedupe(selected).stream().sorted(Comparator.comparingInt(Source::score).reversed()).limit(12).toList();
     }
+
+    List<String> warnings(){return List.copyOf(warnings);}
+    private void warn(String message){warnings.add(message);System.out.println("Figyelmeztetés: "+message);}
+    private void warnOnce(String message){if(!warnings.contains(message))warn(message);}
 
     private void ensureQuestionRepositoryPublic(){
         Map<String,Object> repo=Json.object(Json.parse(http.get("https://api.github.com/repos/"+config.repository(),headers).body()));
@@ -30,12 +41,12 @@ final class GitHubSourceCollector {
         if(k.contains("receiptData"))q.add("receiptData xsd");
         if(k.contains("hash"))q.add("hash upload");
         if(q.size()<3&&k.size()>3)q.add(quote(k.get(2))+" "+quote(k.get(3)));
-        return q.stream().filter(s->!s.isBlank()).limit(3).toList();
+        return q.stream().filter(s->!s.isBlank()).limit(2).toList();
     }
     private String quote(String s){return s.matches("[A-Za-z0-9_-]+")?s:"\""+s.replace("\"","")+"\"";}
     private List<Source> searchCode(String terms){
         String q=terms+" org:"+config.organization();
-        Object raw=Json.parse(http.get("https://api.github.com/search/code?q="+WebClient.query(q)+"&per_page=10",headers).body());
+        Object raw=Json.parse(http.get("https://api.github.com/search/code?q="+WebClient.query(q)+"&per_page=6",headers).body());
         List<Source> out=new ArrayList<>(); for(Object item:Json.array(Json.object(raw).get("items"))){Map<String,Object> i=Json.object(item);String url=Json.string(i.get("url"));
             try{Map<String,Object> file=Json.object(Json.parse(http.get(url,headers).body()));String content=decode(file);String html=Json.string(file.get("html_url"));String path=Json.string(file.get("path"));out.add(new Source(Json.string(Json.object(i.get("repository")).get("full_name"))+"/"+path,html,WebClient.shorten(content,12000),scorePath(path)));}catch(Exception x){System.out.println("Figyelmeztetés: GitHub-fájl kihagyva: "+x.getMessage());}}
         return out;

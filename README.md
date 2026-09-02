@@ -48,7 +48,7 @@ Az environment neve pontosan: `Github assistant`.
 | `SMTP_USERNAME` | a feladó Gmail-címe |
 | `SMTP_PASSWORD` | Gmail alkalmazásjelszó, nem a normál jelszó |
 | `SMTP_STARTTLS` | `true` |
-| `ORG_READ_TOKEN` | opcionális; publikus forrásokhoz üresen hagyható |
+| `ORG_READ_TOKEN` | ajánlott, csak olvasási célú GitHub Personal Access Token; ha nincs megadva, a workflow beépített `GITHUB_TOKEN` értékét használja |
 
 Az `AI_API_KEY`, `WORKSPACE_AGENT_TRIGGER_ID`, `WORKSPACE_AGENT_ACCESS_TOKEN` és Gemini-beállítások ehhez a változathoz nem kellenek.
 
@@ -108,6 +108,9 @@ Az email spam mappáját is ellenőrizd.
 - Nincs automatikus válasz, komment vagy publikálás.
 - A Groq Free Plan jelenlegi `openai/gpt-oss-120b` limitje 30 kérés/perc, 1000 kérés/nap, 8000 token/perc és 200 000 token/nap. A csomag ezért 5000 karakterre korlátozza a rangsorolt előzetes forráskörnyezetet, és legfeljebb 1200 választokent kér. Ez biztonságos tartalékot hagy a promptnak és a böngészős keresésnek is. A limitek változhatnak; túllépéskor a workflow hibával leáll, és később újrapróbálható.
 - A Groq dokumentációja szerint a `browser_search` támogatott az `openai/gpt-oss-120b` modellen, és szerveroldalon fut; külön böngészőszolgáltatást nem kell telepíteni.
+- A GitHub Search API `429` sebességkorlátja nem állítja le a teljes workflow-t. A program ilyenkor megszakítja a további GitHub-kereséseket, folytatja a NAV-webes és Groq böngészős keresést, az emailben pedig jelzi, hogy a GitHub-források részlegesek lehetnek.
+- A Search API terhelésének csökkentésére kérdésenként legfeljebb két keresőkifejezés és keresésenként legfeljebb hat kódtalálat kerül feldolgozásra.
+- GitHub tokent soha ne írj az `action.yml`, a workflow YAML vagy a Java forráskód tartalmába. A tesztrepository `Github assistant` environmentjében, `ORG_READ_TOKEN` nevű secretként tárold. A napló csak azt jelzi, hogy a hitelesítés aktív-e; a token értékét nem írja ki.
 
 ## Helyi/CI önellenőrzés
 

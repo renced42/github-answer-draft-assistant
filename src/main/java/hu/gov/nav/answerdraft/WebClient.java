@@ -12,16 +12,19 @@ final class WebClient {
             HttpRequest.Builder b=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(60)).header("User-Agent","github-answer-draft-assistant/2");
             headers.forEach(b::header); b.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofString(body,StandardCharsets.UTF_8));
             HttpResponse<String> r=client.send(b.build(),HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if(r.statusCode()==429&&isGitHub(url)) throw new HttpStatusException(r.statusCode(),"HTTP "+r.statusCode()+" hiba a(z) "+url+" hívásakor: "+shorten(r.body(),1200));
             if((r.statusCode()==429||r.statusCode()==408||r.statusCode()>=500)&&attempt<4){ Thread.sleep(attempt*1500L); continue; }
             if(r.statusCode()<200||r.statusCode()>=300) throw new HttpStatusException(r.statusCode(),"HTTP "+r.statusCode()+" hiba a(z) "+url+" hívásakor: "+shorten(r.body(),1200));
             return new Response(r.statusCode(),r.body());
         } catch(HttpStatusException x){throw x;} catch(InterruptedException x){Thread.currentThread().interrupt();throw new IllegalStateException("Megszakított HTTP kérés",x);} catch(Exception x){if(attempt==4)throw new IllegalStateException("HTTP hívás sikertelen: "+url,x); try{Thread.sleep(attempt*1000L);}catch(InterruptedException i){Thread.currentThread().interrupt();}}
         throw new IllegalStateException("HTTP hívás sikertelen: "+url);
     }
-    private static final class HttpStatusException extends IllegalStateException {
-        @SuppressWarnings("unused") private final int status;
+    static final class HttpStatusException extends IllegalStateException {
+        private final int status;
         private HttpStatusException(int status,String message){super(message);this.status=status;}
+        int status(){return status;}
     }
+    private static boolean isGitHub(String url){try{return "api.github.com".equalsIgnoreCase(URI.create(url).getHost());}catch(Exception ignored){return false;}}
     static String query(String value){return URLEncoder.encode(value,StandardCharsets.UTF_8).replace("+","%20");}
     static String shorten(String s,int max){return s==null?"":s.substring(0,Math.min(max,s.length()));}
 }
