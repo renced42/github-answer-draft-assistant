@@ -29,6 +29,11 @@ jobs:
           author: ${{ github.event.issue.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
           workspace-agent-trigger-id: ${{ vars.WORKSPACE_AGENT_TRIGGER_ID }}
+          knowledge-repository: ${{ vars.KNOWLEDGE_REPOSITORY }}
+          knowledge-approved-label: approved-knowledge
+          knowledge-candidate-label: knowledge-candidate
+          create-review-issue: "true"
+          knowledge-limit: ${{ vars.KNOWLEDGE_LIMIT || '5' }}
         env:
           WORKSPACE_AGENT_ACCESS_TOKEN: ${{ secrets.WORKSPACE_AGENT_ACCESS_TOKEN }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
@@ -37,6 +42,7 @@ jobs:
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_STARTTLS: ${{ secrets.SMTP_STARTTLS }}
+          KNOWLEDGE_REPOSITORY_TOKEN: ${{ secrets.KNOWLEDGE_REPOSITORY_TOKEN }}
 
   discussion-draft:
     if: github.event_name == 'discussion'
@@ -55,6 +61,11 @@ jobs:
           author: ${{ github.event.discussion.user.login }}
           email-to: ${{ vars.DRAFT_EMAIL_TO }}
           workspace-agent-trigger-id: ${{ vars.WORKSPACE_AGENT_TRIGGER_ID }}
+          knowledge-repository: ${{ vars.KNOWLEDGE_REPOSITORY }}
+          knowledge-approved-label: approved-knowledge
+          knowledge-candidate-label: knowledge-candidate
+          create-review-issue: "true"
+          knowledge-limit: ${{ vars.KNOWLEDGE_LIMIT || '5' }}
         env:
           WORKSPACE_AGENT_ACCESS_TOKEN: ${{ secrets.WORKSPACE_AGENT_ACCESS_TOKEN }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
@@ -63,3 +74,4 @@ jobs:
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_STARTTLS: ${{ secrets.SMTP_STARTTLS }}
+          KNOWLEDGE_REPOSITORY_TOKEN: ${{ secrets.KNOWLEDGE_REPOSITORY_TOKEN }}
