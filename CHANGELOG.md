@@ -1,5 +1,12 @@
 # Változásnapló
 
+## 2026-09-02 – Groq `output_parse_failed` kezelés
+
+- A hibásan formázott böngészős eszközhívás nem állítja le azonnal a workflow-t.
+- A program egyszer automatikusan megismétli a kötelező böngészős keresést.
+- Ismételt hiba esetén böngésző nélküli Groq-hívásra vált, felhasználva az előzetesen összegyűjtött GitHub- és NAV-webforrásokat.
+- A csökkentett internetes forrásfeltárásról figyelmeztetés kerül az emailbe.
+
 ## 2026-09-02 – GitHub Search API 429 kezelés
 
 - A GitHub Search API `429` válasza már nem állítja le a teljes workflow-t.

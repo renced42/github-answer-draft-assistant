@@ -8,7 +8,7 @@ public final class Main {
         System.out.println("GitHub API hitelesítés: "+(c.githubToken().isBlank()?"nincs – nyilvános, alacsonyabb limitű hozzáférés":"aktív"));
         System.out.println("Nyilvános GitHub-források keresése: "+c.organization());GitHubSourceCollector githubCollector=new GitHubSourceCollector(http,c);List<Source> sources=new ArrayList<>(githubCollector.collect(q));
         if(c.navSearch()){System.out.println("Nyilvános NAV-webforrások keresése...");sources.addAll(new NavSourceCollector(http).collect(q));}
-        System.out.println("Összegyűjtött források: "+sources.size());String draft=new GroqClient(http,c).generate(PromptBuilder.build(q,sources));EmailComposer.Email email=EmailComposer.compose(q,draft,sources,githubCollector.warnings());
+        System.out.println("Összegyűjtött források: "+sources.size());GroqClient.Generation generation=new GroqClient(http,c).generate(PromptBuilder.build(q,sources));List<String> warnings=new ArrayList<>(githubCollector.warnings());warnings.addAll(generation.warnings());EmailComposer.Email email=EmailComposer.compose(q,generation.content(),sources,warnings);
         if(c.dryRun()){System.out.println("DRY RUN – email nem kerül elküldésre.\n\n"+email.subject()+"\n\n"+email.body());}else{new SmtpMailer().send(c,email);System.out.println("A választervezet elküldve "+c.recipients().size()+" címzettnek. GitHub-publikálás nem történt.");}
     }
     static String limitQuestion(String text,int maxChars){

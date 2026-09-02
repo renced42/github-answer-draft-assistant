@@ -111,6 +111,7 @@ Az email spam mappáját is ellenőrizd.
 - A GitHub Search API `429` sebességkorlátja nem állítja le a teljes workflow-t. A program ilyenkor megszakítja a további GitHub-kereséseket, folytatja a NAV-webes és Groq böngészős keresést, az emailben pedig jelzi, hogy a GitHub-források részlegesek lehetnek.
 - A Search API terhelésének csökkentésére kérdésenként legfeljebb két keresőkifejezés és keresésenként legfeljebb hat kódtalálat kerül feldolgozásra.
 - GitHub tokent soha ne írj az `action.yml`, a workflow YAML vagy a Java forráskód tartalmába. A tesztrepository `Github assistant` environmentjében, `ORG_READ_TOKEN` nevű secretként tárold. A napló csak azt jelzi, hogy a hitelesítés aktív-e; a token értékét nem írja ki.
+- Groq `output_parse_failed` hiba esetén a böngészős keresést a program egyszer automatikusan újrapróbálja. Ha a második kísérlet is ugyanígy hibázik, a már összegyűjtött GitHub- és NAV-webforrásokból készít tervezetet, és az emailben jelzi a részleges internetes forrásfeltárást.
 
 ## Helyi/CI önellenőrzés
 
