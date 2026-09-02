@@ -1,5 +1,13 @@
 # Változásnapló
 
+## 2026-09-02 – Szakértői tudás és dokumentációs hiány kezelése
+
+- A jóváhagyott tudás eredete `official-source` vagy `expert-confirmed` lehet.
+- A nyilvános dokumentáció állapota `documented` vagy `documentation-gap` lehet.
+- A szakértő által jóváhagyott, de nyilvánosan nem dokumentált válasz használható anélkül, hogy a modell dokumentációra hivatkozna.
+- A privát tudástár issue URL-je nem kerül a modellpromptba.
+- Az automatikus review issue és a manuális Issue Form tartalmazza az új besorolási mezőket.
+
 ## 2026-09-02 – Privát, GitHub Issues-alapú ellenőrzött tudástár
 
 - A választervezet opcionálisan privát review issue-ként is létrejön a konfigurált tudástár-repositoryban.

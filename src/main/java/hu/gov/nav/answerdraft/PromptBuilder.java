@@ -7,7 +7,7 @@ final class PromptBuilder {
         // A Groq Free Plan modellkorlátja 8000 token/perc. A böngészős
         // keresésnek és a válasznak is maradjon biztos tartaléka.
         StringBuilder context=new StringBuilder();int budget=5000,index=1;
-        for(Source s:balanced(sources)){String content=WebClient.shorten(s.content(),1400);String block="\n--- FORRÁS "+index+" ---\nCím: "+s.title()+"\nURL: "+s.url()+"\nTartalom:\n"+content+"\n";if(context.length()+block.length()>budget)block=WebClient.shorten(block,Math.max(0,budget-context.length()));context.append(block);index++;if(context.length()>=budget)break;}
+        for(Source s:balanced(sources)){String content=WebClient.shorten(s.content(),1400);String url=s.privateKnowledge()?"[BELSŐ TUDÁSTÁR – ÜGYFÉLVÁLASZBAN NEM HIVATKOZHATÓ]":s.url();String block="\n--- FORRÁS "+index+" ---\nCím: "+s.title()+"\nURL: "+url+"\nTartalom:\n"+content+"\n";if(context.length()+block.length()>budget)block=WebClient.shorten(block,Math.max(0,budget-context.length()));context.append(block);index++;if(context.length()>=budget)break;}
         String system="""
                 Magyar nyelvű, NAV technikai válasz-előkészítő vagy. Kizárólag tervezetet készítesz emberi ellenőrzéshez.
                 BIZTONSÁG ÉS FORRÁSHŰSÉG:
@@ -17,6 +17,11 @@ final class PromptBuilder {
                 - Először azonosítsd a kérdés pontos NAV-rendszerét és interfészét. Más NAV-rendszer dokumentációja önmagában nem bizonyíték, még akkor sem, ha hasonló fogalmakat használ.
                 - Az eNyugta, Online pénztárgép, Online Számla és eÁFA külön rendszer. Ne vidd át egyik rendszer műszaki tulajdonságát a másikra közvetlen, közös érvényességet igazoló forrás nélkül.
                 - A „Jóváhagyott tudás” forrás ember által ellenőrzött korábbi válasz. Használd mintaként, de frissebb hivatalos specifikációval való ellentmondás esetén a frissebb hivatalos forrást részesítsd előnyben és jelezd az eltérést.
+                - A belső tudástár URL-jét soha ne add vissza, ne idézd és ne sorold a források közé. A belső issue címét, címkéit és review-metaadatait se tedd az ügyfélnek szánt válaszba.
+                - Az `official-source` eredetű tudás hivatalos forrásból ellenőrzött. Csak a tartalmában külön megadott, nyilvános URL-eket hivatkozd.
+                - Az `expert-confirmed` eredetű tudás szakértő által jóváhagyott működési ismeret. Ezt felhasználhatod közvetlen válaszhoz, de ne állítsd, hogy nyilvános dokumentáció igazolja.
+                - `documentation-gap` esetén a JAVASOLT VÁLASZ legyen tárgyszerű és használható, például „A jelenlegi működés szerint...”; a dokumentáció hiányát a BIZONYTALANSÁGOK / ELLENŐRIZENDŐ részben jelezd. Ne fogalmazz úgy, hogy „a dokumentáció alapján”.
+                - Jóváhagyott szakértői tudás esetén ne válaszold azt, hogy a válasz nem tudható pusztán azért, mert nincs hozzá nyilvános forrás.
                 - XSD/XML kérdésnél keresd meg a kapcsolódó XSD-ket, include/import fájlokat, minta XML-eket és specifikációt. Az XSD elemeiből generálj rövid, szemléltető XML-részletet, ha erre kérdeztek rá.
                 - A repositoryban talált mintát nevezheted hivatalos mintának. Saját, XSD-ből levezetett példát mindig „szemléltető, generált példa” megjelöléssel adj meg.
                 - Ne állítsd, hogy nincs séma vagy minta, amíg a megfelelő GitHub-repository fájait és az XSD-hivatkozásokat nem ellenőrizted.
@@ -60,8 +65,8 @@ final class PromptBuilder {
     }
 
     private static List<Source> balanced(List<Source> sources){
-        List<Source> official=sources.stream().filter(source->!source.title().startsWith("Jóváhagyott tudás:")).toList();
-        List<Source> approved=sources.stream().filter(source->source.title().startsWith("Jóváhagyott tudás:")).limit(2).toList();
+        List<Source> official=sources.stream().filter(source->!source.privateKnowledge()).toList();
+        List<Source> approved=sources.stream().filter(Source::privateKnowledge).limit(2).toList();
         if(approved.isEmpty())return official;
         List<Source> result=new ArrayList<>();int officialIndex=0;
         while(officialIndex<official.size()&&officialIndex<2)result.add(official.get(officialIndex++));

@@ -18,7 +18,7 @@ A teljes, lépésről lépésre követhető beállítás a [TELEPITES.md](TELEPI
 
 Az opcionális `renced42/github-answer-knowledge` privát repository GitHub Issues felülete biztosítja a review-folyamatot. Az automatikus tervezet `knowledge-candidate` címkét kap. A modell később csak az `approved-knowledge` címkés, kitöltött **Ellenőrzött végleges válasz** szakaszt használja.
 
-A `needs-correction`, `rejected` és `outdated` címke kizárja az issue-t. Az `approved-knowledge` hozzáadása egyben engedélyezi, hogy az ellenőrzött tartalom a Groq API-hoz kerüljön.
+A `needs-correction`, `rejected` és `outdated` címke kizárja az issue-t. Az `approved-knowledge` hozzáadása egyben engedélyezi, hogy az ellenőrzött tartalom a Groq API-hoz kerüljön. Minden jóváhagyott bejegyzésnél meg kell adni, hogy `official-source` vagy `expert-confirmed`, illetve `documented` vagy `documentation-gap`. Így a szakértő által ismert, de még nem dokumentált válasz is használható anélkül, hogy a modell nyilvános dokumentációra hivatkozna. A privát tudástár issue URL-je nem kerül a modellhez.
 
 ## 1. Az Action repository frissítése
 

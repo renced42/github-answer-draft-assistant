@@ -4,7 +4,11 @@ import java.util.*;
 
 final class KnowledgeRepositoryClient {
     private static final String PLACEHOLDER="[IDE ÍRD AZ ELLENŐRZÖTT VÉGLEGES VÁLASZT]";
+    private static final String ORIGIN_PLACEHOLDER="[VÁLASSZ: official-source VAGY expert-confirmed]";
+    private static final String DOCUMENTATION_PLACEHOLDER="[VÁLASSZ: documented VAGY documentation-gap]";
     private static final Set<String> BLOCKING_LABELS=Set.of("rejected","outdated","needs-correction");
+    private static final Set<String> ALLOWED_ORIGINS=Set.of("official-source","expert-confirmed");
+    private static final Set<String> ALLOWED_DOCUMENTATION_STATES=Set.of("documented","documentation-gap");
     private final WebClient http;
     private final Config config;
     private final Map<String,String> headers;
@@ -30,9 +34,14 @@ final class KnowledgeRepositoryClient {
                 if(!sameSystem(system,storedSystem,title+"\n"+body))continue;
                 String answer=namedSection(body,"Ellenőrzött végleges válasz");
                 if(answer.isBlank()||answer.contains(PLACEHOLDER)){warn("A jóváhagyott tudás-issue nem tartalmaz kitöltött végleges választ, ezért kimaradt: "+Json.string(issue.get("html_url")));continue;}
+                Set<String> labels=labels(issue);
+                String origin=controlledValue(namedSection(body,"Tudás eredete"),labels,ALLOWED_ORIGINS);
+                String documentation=controlledValue(namedSection(body,"Nyilvános dokumentáció állapota"),labels,ALLOWED_DOCUMENTATION_STATES);
+                if(origin.isBlank()||documentation.isBlank()){warn("A jóváhagyott tudás-issue eredete vagy dokumentációs állapota nincs szabályosan megadva, ezért kimaradt: "+Json.string(issue.get("html_url")));continue;}
                 String sources=namedSection(body,"Felhasznált források");int score=relevance(title+" "+body,keywords);
-                String content="Azonosított rendszer: "+system+"\n\nELLENŐRZÖTT VÁLASZ:\n"+answer+(sources.isBlank()?"":"\n\nELLENŐRZÖTT FORRÁSOK:\n"+sources);
-                candidates.add(new Candidate(new Source("Jóváhagyott tudás: "+title,Json.string(issue.get("html_url")),WebClient.shorten(content,7000),160+score),score));
+                String content="Azonosított rendszer: "+system+"\nTudás eredete: "+origin+"\nNyilvános dokumentáció állapota: "+documentation+"\n\nELLENŐRZÖTT VÁLASZ:\n"+answer+(sources.isBlank()?"":"\n\nNYILVÁNOSAN HIVATKOZHATÓ FORRÁSOK:\n"+sources);
+                content=sanitizePrivateKnowledgeLinks(content,config.knowledgeRepository());
+                candidates.add(new Candidate(new Source("Jóváhagyott belső tudás","",WebClient.shorten(content,7000),160+score,SourceType.APPROVED_KNOWLEDGE),score));
             }
             return candidates.stream().sorted(Comparator.comparingInt(Candidate::score).reversed()).limit(config.knowledgeLimit()).map(Candidate::source).toList();
         }catch(Exception error){warn("A privát tudástár olvasása sikertelen: "+error.getMessage());return List.of();}
@@ -53,7 +62,7 @@ final class KnowledgeRepositoryClient {
     List<String> warnings(){return List.copyOf(warnings);}
 
     static String reviewBody(Question question,String system,String draft,List<Source> sources,List<String> warnings,String approvedLabel){
-        StringBuilder sourceList=new StringBuilder();for(Source source:sources)sourceList.append("- [").append(source.title()).append("](").append(source.url()).append(")\n");
+        StringBuilder sourceList=new StringBuilder();for(Source source:sources){if(source.privateKnowledge()||source.url().isBlank())sourceList.append("- ").append(source.title()).append(" (belső, ügyfélnek nem hivatkozható)\n");else sourceList.append("- [").append(source.title()).append("](").append(source.url()).append(")\n");}
         String warningText=warnings.isEmpty()?"Nincs.":String.join("\n",warnings);
         return """
                 > **Állapot:** AI által készített tervezet, emberi ellenőrzés szükséges. A `%s` címke csak a végleges válasz kitöltése után adható hozzá.
@@ -85,6 +94,14 @@ final class KnowledgeRepositoryClient {
 
                 %s
 
+                ## Tudás eredete
+
+                %s
+
+                ## Nyilvános dokumentáció állapota
+
+                %s
+
                 ## Felhasznált források
 
                 %s
@@ -102,8 +119,8 @@ final class KnowledgeRepositoryClient {
 
                 ## Jóváhagyási nyilatkozat
 
-                A `%s` címke hozzáadása azt jelenti, hogy az **Ellenőrzött végleges válasz** és a hozzá tartozó források a későbbi kérdéseknél átadhatók a konfigurált külső AI-szolgáltatónak.
-                """.formatted(approvedLabel,question.repository(),question.kind(),question.number(),question.author(),question.url(),question.title(),question.body(),system,draft,PLACEHOLDER,sourceList,warningText,approvedLabel);
+                A `%s` címke hozzáadása azt jelenti, hogy az **Ellenőrzött végleges válasz**, annak eredete, dokumentációs állapota és forrásai a későbbi kérdéseknél átadhatók a konfigurált külső AI-szolgáltatónak. A privát issue URL-je nem kerül átadásra.
+                """.formatted(approvedLabel,question.repository(),question.kind(),question.number(),question.author(),question.url(),question.title(),question.body(),system,draft,PLACEHOLDER,ORIGIN_PLACEHOLDER,DOCUMENTATION_PLACEHOLDER,sourceList,warningText,approvedLabel);
     }
 
     static String section(String body,String startHeading,String nextHeading){
@@ -119,6 +136,12 @@ final class KnowledgeRepositoryClient {
         java.util.regex.Matcher next=java.util.regex.Pattern.compile("(?m)^#{2,6}\\s+.+$").matcher(body);next.region(start,body.length());int end=next.find()?next.start():body.length();return body.substring(start,end).trim();
     }
 
+    static String sanitizePrivateKnowledgeLinks(String text,String repository){
+        if(text==null||text.isBlank()||repository==null||repository.isBlank())return text==null?"":text;
+        String prefix="https://github.com/"+repository+"/issues/";
+        return text.replaceAll(java.util.regex.Pattern.quote(prefix)+"\\d+(?:[#?][^\\s)]*)?","[BELSŐ LINK ELTÁVOLÍTVA]");
+    }
+
     private boolean sameSystem(String expected,String stored,String fallbackText){
         if("NEM AZONOSÍTOTT".equals(expected))return true;
         if(!stored.isBlank())return expected.equalsIgnoreCase(stored.trim());
@@ -127,6 +150,8 @@ final class KnowledgeRepositoryClient {
 
     private int relevance(String text,Set<String> keywords){String value=text.toLowerCase(Locale.ROOT);int score=0;for(String keyword:keywords)if(value.contains(keyword.toLowerCase(Locale.ROOT)))score+=10;return score;}
     private boolean hasBlockingLabel(Map<String,Object> issue){for(Object raw:Json.array(issue.get("labels"))){String name=Json.string(Json.object(raw).get("name")).toLowerCase(Locale.ROOT);if(BLOCKING_LABELS.contains(name))return true;}return false;}
+    private Set<String> labels(Map<String,Object> issue){Set<String> result=new HashSet<>();for(Object raw:Json.array(issue.get("labels")))result.add(Json.string(Json.object(raw).get("name")).trim().toLowerCase(Locale.ROOT));return result;}
+    private String controlledValue(String section,Set<String> labels,Set<String> allowed){String normalized=section.trim().toLowerCase(Locale.ROOT);for(String value:allowed)if(normalized.equals(value)||labels.contains(value))return value;return "";}
     private String findExistingReview(String questionUrl){
         try{String url="https://api.github.com/repos/"+config.knowledgeRepository()+"/issues?state=all&sort=created&direction=desc&per_page=100";for(Object raw:Json.array(Json.parse(http.get(url,headers).body()))){Map<String,Object> issue=Json.object(raw);if(issue.containsKey("pull_request"))continue;if(Json.string(issue.get("body")).contains(questionUrl))return Json.string(issue.get("html_url"));}}
         catch(Exception error){warn("A meglévő review issue ellenőrzése sikertelen: "+error.getMessage());}
