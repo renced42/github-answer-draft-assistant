@@ -11,6 +11,7 @@
 - A prompt külön kezeli az eNyugta, Online pénztárgép, Online Számla és eÁFA rendszereket.
 - Elkészült a privát tudástár manuális bejegyzéseihez használható GitHub Issue Form.
 - Az Action `actions/setup-java@v6` verzióra frissült.
+- Átállási `Model.java` került a csomagba, hogy webes fájlfeltöltéskor is felülírja a rekordokat tartalmazó régi fájlt, és ne keletkezzen duplikált `Question` vagy `Source` osztály.
 
 ## 2026-09-02 – Groq `output_parse_failed` kezelés
 

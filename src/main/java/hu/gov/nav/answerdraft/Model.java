@@ -1,4 +1,12 @@
 package hu.gov.nav.answerdraft;
 
-record Question(String kind, String repository, int number, String title, String body, String url, String author) {}
-record Source(String title, String url, String content, int score) {}
+/**
+ * Átállási helyőrző a korábbi, több rekordot egy fájlban tartalmazó modellfájl felülírásához.
+ *
+ * <p>A tényleges adattípusok a {@code Question.java}, {@code Source.java} és
+ * {@code Prompt.java} fájlokban találhatók.</p>
+ */
+final class Model {
+    private Model() {
+    }
+}

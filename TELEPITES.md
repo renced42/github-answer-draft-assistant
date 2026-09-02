@@ -13,9 +13,10 @@ Az eredeti Issue vagy Discussion soha nem kap automatikus választ. A rendszer p
 1. Nyisd meg a `renced42/github-answer-draft-assistant` repositoryt.
 2. A csomag teljes tartalmát másold a repository gyökerébe.
 3. Ellenőrizd, hogy az `action.yml` közvetlenül a gyökérben található.
-4. Commitold a fájlokat a `main` ágra.
-5. Nyisd meg az **Actions → Java ellenőrzés** futást.
-6. A `Fordítás és önellenőrzés` lépésnek sikeresen kell befejeződnie.
+4. Fontos frissítési lépés: a `src/main/java/hu/gov/nav/answerdraft/Model.java` fájlt is írd felül a csomagban található változattal. A régi fájl még `Question` és `Source` rekordokat tartalmazott, amelyek az új verzióban külön fájlokba kerültek.
+5. Commitold a fájlokat a `main` ágra.
+6. Nyisd meg az **Actions → Java ellenőrzés** futást.
+7. A `Fordítás és önellenőrzés` lépésnek sikeresen kell befejeződnie.
 
 A tesztworkflow továbbra is ezt használja:
 
@@ -215,6 +216,16 @@ Töltsd ki az Issue Formot. Az issue először `knowledge-candidate` címkét ka
 A workflow ismételt futtatása nem hoz létre újabb review issue-t ugyanahhoz az eredeti kérdés-URL-hez. A rendszer megkeresi a már létező privát issue-t, és annak linkjét küldi ki újra.
 
 ## 13. Gyakori hibák
+
+### `duplicate class: hu.gov.nav.answerdraft.Source` vagy `Question`
+
+A repositoryban a régi `Model.java` maradt meg. Írd felül ezzel a csomagban található fájllal:
+
+```text
+src/main/java/hu/gov/nav/answerdraft/Model.java
+```
+
+Az új `Model.java` már nem deklarálja a `Question` és `Source` rekordokat.
 
 ### `KNOWLEDGE_REPOSITORY_TOKEN` hiányzik
 
