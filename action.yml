@@ -1,4 +1,4 @@
-name: "GitHub Answer Draft Assistant – Java + Groq"
+name: "GitHub Answer Draft Assistant – Java + Groq/OpenAI"
 description: "NAV-forrásokból emailes választervezetet és opcionális privát review issue-t készít; az eredeti kérdésre nem publikál."
 
 inputs:
@@ -33,13 +33,21 @@ inputs:
     description: "Vesszővel elválasztott email-címzettek"
     required: true
   question-max-chars:
-    description: "A Groqnak átadott Issue/Discussion szöveg maximális karakterszáma"
+    description: "Az AI-szolgáltatónak átadott Issue/Discussion szöveg maximális karakterszáma"
     required: false
     default: "3000"
+  ai-provider:
+    description: "AI-szolgáltató: groq vagy openai"
+    required: false
+    default: "groq"
   groq-model:
     description: "A Groq modellen belüli modellazonosító"
     required: false
     default: "openai/gpt-oss-120b"
+  openai-model:
+    description: "Az OpenAI Responses API modellazonosítója"
+    required: false
+    default: "gpt-5.4-mini"
   nav-gov-hu-search:
     description: "Keressen-e a nyilvános nav.gov.hu oldalakon"
     required: false
@@ -104,7 +112,9 @@ runs:
         ASSISTANT_AUTHOR: ${{ inputs.author }}
         ASSISTANT_EMAIL_TO: ${{ inputs.email-to }}
         ASSISTANT_QUESTION_MAX_CHARS: ${{ inputs.question-max-chars }}
+        ASSISTANT_AI_PROVIDER: ${{ inputs.ai-provider }}
         ASSISTANT_GROQ_MODEL: ${{ inputs.groq-model }}
+        ASSISTANT_OPENAI_MODEL: ${{ inputs.openai-model }}
         ASSISTANT_NAV_SEARCH: ${{ inputs.nav-gov-hu-search }}
         ASSISTANT_BROWSER_SEARCH: ${{ inputs.browser-search }}
         ASSISTANT_KNOWLEDGE_REPOSITORY: ${{ inputs.knowledge-repository }}

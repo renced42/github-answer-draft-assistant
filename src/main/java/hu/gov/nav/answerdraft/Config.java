@@ -3,10 +3,11 @@ package hu.gov.nav.answerdraft;
 import java.util.*;
 
 record Config(String organization, String eventKind, String repository, int number, String title, String body,
-              String questionUrl, String author, List<String> recipients, int questionMaxChars, String groqModel, boolean navSearch,
+              String questionUrl, String author, List<String> recipients, int questionMaxChars, String aiProvider,
+              String groqModel, String openAiModel, boolean navSearch,
               boolean browserSearch, boolean dryRun, String githubToken, String knowledgeRepository,
               String knowledgeToken, String knowledgeApprovedLabel, String knowledgeCandidateLabel,
-              boolean createReviewIssue, int knowledgeLimit, String groqKey, String mailFrom,
+              boolean createReviewIssue, int knowledgeLimit, String groqKey, String openAiKey, String mailFrom,
               String smtpHost, int smtpPort, String smtpUser, String smtpPassword, boolean smtpStartTls) {
     static Config fromEnvironment() {
         Map<String,String> e = System.getenv();
@@ -14,6 +15,10 @@ record Config(String organization, String eventKind, String repository, int numb
         String[] recipients = required(e,"ASSISTANT_EMAIL_TO").split(",");
         String knowledgeRepository=optional(e,"ASSISTANT_KNOWLEDGE_REPOSITORY","");
         String knowledgeToken=optional(e,"KNOWLEDGE_REPOSITORY_TOKEN","");
+        String aiProvider=optional(e,"ASSISTANT_AI_PROVIDER","groq").toLowerCase(Locale.ROOT);
+        if(!Set.of("groq","openai").contains(aiProvider))throw new IllegalStateException("Az ASSISTANT_AI_PROVIDER értéke csak groq vagy openai lehet: "+aiProvider);
+        String groqKey="groq".equals(aiProvider)?required(e,"GROQ_API_KEY"):optional(e,"GROQ_API_KEY","");
+        String openAiKey="openai".equals(aiProvider)?required(e,"OPENAI_API_KEY"):optional(e,"OPENAI_API_KEY","");
         if(!knowledgeRepository.isBlank()){
             validateRepository(knowledgeRepository);
             if(knowledgeToken.isBlank())throw new IllegalStateException("Az ASSISTANT_KNOWLEDGE_REPOSITORY be van állítva, de hiányzik a KNOWLEDGE_REPOSITORY_TOKEN secret.");
@@ -23,12 +28,13 @@ record Config(String organization, String eventKind, String repository, int numb
                 required(e,"ASSISTANT_TITLE"), optional(e,"ASSISTANT_BODY",""), required(e,"ASSISTANT_QUESTION_URL"),
                 optional(e,"ASSISTANT_AUTHOR","ismeretlen"), Arrays.stream(recipients).map(String::trim).filter(s->!s.isBlank()).toList(),
                 boundedInt(e,"ASSISTANT_QUESTION_MAX_CHARS",3000,500,10000),
-                optional(e,"ASSISTANT_GROQ_MODEL","openai/gpt-oss-120b"), bool(e,"ASSISTANT_NAV_SEARCH",true),
+                aiProvider,optional(e,"ASSISTANT_GROQ_MODEL","openai/gpt-oss-120b"),
+                optional(e,"ASSISTANT_OPENAI_MODEL","gpt-5.4-mini"), bool(e,"ASSISTANT_NAV_SEARCH",true),
                 bool(e,"ASSISTANT_BROWSER_SEARCH",true), bool(e,"ASSISTANT_DRY_RUN",false), readToken,
                 knowledgeRepository,knowledgeToken,optional(e,"ASSISTANT_KNOWLEDGE_APPROVED_LABEL","approved-knowledge"),
                 optional(e,"ASSISTANT_KNOWLEDGE_CANDIDATE_LABEL","knowledge-candidate"),
                 bool(e,"ASSISTANT_CREATE_REVIEW_ISSUE",true),boundedInt(e,"ASSISTANT_KNOWLEDGE_LIMIT",5,1,20),
-                required(e,"GROQ_API_KEY"), optional(e,"MAIL_FROM", optional(e,"SMTP_USERNAME","")),
+                groqKey,openAiKey, optional(e,"MAIL_FROM", optional(e,"SMTP_USERNAME","")),
                 optional(e,"SMTP_HOST","smtp.gmail.com"), Integer.parseInt(optional(e,"SMTP_PORT","587")),
                 required(e,"SMTP_USERNAME"), required(e,"SMTP_PASSWORD"), bool(e,"SMTP_STARTTLS",true));
     }

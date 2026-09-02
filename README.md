@@ -1,4 +1,4 @@
-# GitHub Answer Draft Assistant – Java 21 + Groq
+# GitHub Answer Draft Assistant – Java 21 + Groq/OpenAI
 
 Nyilvános GitHub Issue vagy Discussion létrehozásakor a rendszer:
 
@@ -6,7 +6,7 @@ Nyilvános GitHub Issue vagy Discussion létrehozásakor a rendszer:
 2. előnyben részesíti az XSD-, XML-, minta- és specifikációfájlokat, és követi az XSD include/import hivatkozásokat;
 3. opcionálisan keres a nyilvános `nav.gov.hu` oldalakon;
 4. opcionálisan beolvassa a privát tudástár azonos NAV-rendszerhez tartozó, ember által jóváhagyott válaszait;
-5. a Groq modell és böngészős keresés segítségével magyar választervezetet készít;
+5. a kiválasztott Groq vagy OpenAI modell és opcionális webes keresés segítségével magyar választervezetet készít;
 6. a tervezetet privát review issue-ként rögzíti, és emailben elküldi mindkét GitHub-linket;
 7. **az eredeti Issue vagy Discussion alatt soha nem publikál automatikusan**.
 
@@ -16,9 +16,9 @@ A teljes, lépésről lépésre követhető beállítás a [TELEPITES.md](TELEPI
 
 ## Privát review és jóváhagyott tudás
 
-Az opcionális `renced42/github-answer-knowledge` privát repository GitHub Issues felülete biztosítja a review-folyamatot. Az automatikus tervezet `knowledge-candidate` címkét kap. A modell később csak az `approved-knowledge` címkés, kitöltött **Ellenőrzött végleges válasz** szakaszt használja.
+Az opcionális `renced42/github-answer-knowledge` privát repository GitHub Issues felülete biztosítja a review-folyamatot. Az automatikus tervezet `knowledge-candidate` címkét kap. Az ellenőrzött választ a review Issue hozzászólásmezőjében, `/approve` után lehet megadni; a tudáseredet és a dokumentációs állapot GitHub-címkékkel választható ki. A modell később csak az `approved-knowledge` címkés, ellenőrzött választ használja.
 
-A `needs-correction`, `rejected` és `outdated` címke kizárja az issue-t. Az `approved-knowledge` hozzáadása egyben engedélyezi, hogy az ellenőrzött tartalom a Groq API-hoz kerüljön. Minden jóváhagyott bejegyzésnél meg kell adni, hogy `official-source` vagy `expert-confirmed`, illetve `documented` vagy `documentation-gap`. Így a szakértő által ismert, de még nem dokumentált válasz is használható anélkül, hogy a modell nyilvános dokumentációra hivatkozna. A privát tudástár issue URL-je nem kerül a modellhez.
+A `needs-correction`, `rejected` és `outdated` címke kizárja az issue-t. Az `approved-knowledge` hozzáadása egyben engedélyezi, hogy az ellenőrzött tartalom a kiválasztott AI API-hoz kerüljön. Minden jóváhagyott bejegyzésnél meg kell adni, hogy `official-source` vagy `expert-confirmed`, illetve `documented` vagy `documentation-gap`. Így a szakértő által ismert, de még nem dokumentált válasz is használható anélkül, hogy a modell nyilvános dokumentációra hivatkozna. A privát tudástár issue URL-je nem kerül a modellhez.
 
 ## 1. Az Action repository frissítése
 
@@ -43,7 +43,9 @@ Az environment neve pontosan: `Github assistant`.
 | Név | Érték |
 |---|---|
 | `DRAFT_EMAIL_TO` | `rencenji.denes@gmail.com` (szabadon módosítható) |
+| `DRAFT_AI_PROVIDER` | `groq` vagy `openai` |
 | `DRAFT_GROQ_MODEL` | `openai/gpt-oss-120b` |
+| `DRAFT_OPENAI_MODEL` | `gpt-5.4-mini` |
 | `DRAFT_QUESTION_MAX_CHARS` | `3000` |
 | `KNOWLEDGE_REPOSITORY` | `renced42/github-answer-knowledge` |
 | `KNOWLEDGE_LIMIT` | `5` |
@@ -53,6 +55,7 @@ Az environment neve pontosan: `Github assistant`.
 | Név | Érték |
 |---|---|
 | `GROQ_API_KEY` | a már létrehozott Groq API-kulcs |
+| `OPENAI_API_KEY` | OpenAI API-kulcs; csak `DRAFT_AI_PROVIDER=openai` esetén kötelező |
 | `MAIL_FROM` | a feladó email-címe |
 | `SMTP_HOST` | Gmail esetén `smtp.gmail.com` |
 | `SMTP_PORT` | Gmail STARTTLS esetén `587` |
@@ -62,7 +65,7 @@ Az environment neve pontosan: `Github assistant`.
 | `ORG_READ_TOKEN` | ajánlott, csak olvasási célú GitHub Personal Access Token; ha nincs megadva, a workflow beépített `GITHUB_TOKEN` értékét használja |
 | `KNOWLEDGE_REPOSITORY_TOKEN` | a privát tudástárhoz kötött fine-grained PAT, kizárólag `Issues: Read and write` joggal |
 
-Az `AI_API_KEY`, `WORKSPACE_AGENT_TRIGGER_ID`, `WORKSPACE_AGENT_ACCESS_TOKEN` és Gemini-beállítások ehhez a változathoz nem kellenek.
+Az általános `AI_API_KEY`, a `WORKSPACE_AGENT_TRIGGER_ID`, a `WORKSPACE_AGENT_ACCESS_TOKEN` és a Gemini-beállítások ehhez a változathoz nem kellenek. A Groq és OpenAI kulcs külön secretben marad.
 
 ## 3. A workflow telepítése a tesztrepositoryba
 
@@ -115,7 +118,7 @@ Az email spam mappáját is ellenőrizd.
 ## 6. Biztonsági és költségkorlátok
 
 - A csomag blokkolja a privát kérdés-repositoryt. Az opcionális privát tudástárból kizárólag címkével jóváhagyott válaszokat olvas.
-- Az Issue/Discussion szövegét, a talált publikus forrásokat és a jóváhagyott tudást a Groq szolgáltatás megkapja.
+- Az Issue/Discussion szövegét, a talált publikus forrásokat és a jóváhagyott tudást a kiválasztott Groq vagy OpenAI szolgáltatás megkapja.
 - A forrás-workflow beépített tokenje csak olvasási jogú. A külön tudástár-token kizárólag a kijelölt privát repository Issues erőforrását olvashatja és írhatja.
 - Nincs automatikus válasz vagy komment az eredeti kérdés alatt; az egyetlen automatikus GitHub-írás a privát review issue.
 - A Groq Free Plan jelenlegi `openai/gpt-oss-120b` limitje 30 kérés/perc, 1000 kérés/nap, 8000 token/perc és 200 000 token/nap. A csomag ezért 5000 karakterre korlátozza a rangsorolt előzetes forráskörnyezetet, és legfeljebb 1200 választokent kér. Ez biztonságos tartalékot hagy a promptnak és a böngészős keresésnek is. A limitek változhatnak; túllépéskor a workflow hibával leáll, és később újrapróbálható.
@@ -124,6 +127,7 @@ Az email spam mappáját is ellenőrizd.
 - A Search API terhelésének csökkentésére kérdésenként legfeljebb két keresőkifejezés és keresésenként legfeljebb hat kódtalálat kerül feldolgozásra.
 - GitHub tokent soha ne írj az `action.yml`, a workflow YAML vagy a Java forráskód tartalmába. A tesztrepository `Github assistant` environmentjében, `ORG_READ_TOKEN` nevű secretként tárold. A napló csak azt jelzi, hogy a hitelesítés aktív-e; a token értékét nem írja ki.
 - Groq `output_parse_failed` hiba esetén a böngészős keresést a program egyszer automatikusan újrapróbálja. Ha a második kísérlet is ugyanígy hibázik, a már összegyűjtött GitHub- és NAV-webforrásokból készít tervezetet, és az emailben jelzi a részleges internetes forrásfeltárást.
+- OpenAI módban a program a Responses API-t használja. Bekapcsolt böngészős keresésnél `web_search` eszközt ad át, a `github.com`, `raw.githubusercontent.com` és `nav.gov.hu` domainekre korlátozva. Ha az eszköz HTTP 400 hibával nem használható, egyszer webes eszköz nélkül készít tervezetet, és ezt az emailben jelzi.
 
 ## Helyi/CI önellenőrzés
 

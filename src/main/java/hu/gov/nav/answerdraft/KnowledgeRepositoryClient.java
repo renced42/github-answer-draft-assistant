@@ -4,8 +4,6 @@ import java.util.*;
 
 final class KnowledgeRepositoryClient {
     private static final String PLACEHOLDER="[IDE ÍRD AZ ELLENŐRZÖTT VÉGLEGES VÁLASZT]";
-    private static final String ORIGIN_PLACEHOLDER="[VÁLASSZ: official-source VAGY expert-confirmed]";
-    private static final String DOCUMENTATION_PLACEHOLDER="[VÁLASSZ: documented VAGY documentation-gap]";
     private static final Set<String> BLOCKING_LABELS=Set.of("rejected","outdated","needs-correction");
     private static final Set<String> ALLOWED_ORIGINS=Set.of("official-source","expert-confirmed");
     private static final Set<String> ALLOWED_DOCUMENTATION_STATES=Set.of("documented","documentation-gap");
@@ -33,7 +31,8 @@ final class KnowledgeRepositoryClient {
                 String storedSystem=namedSection(body,"Azonosított rendszer");
                 if(!sameSystem(system,storedSystem,title+"\n"+body))continue;
                 String answer=namedSection(body,"Ellenőrzött végleges válasz");
-                if(answer.isBlank()||answer.contains(PLACEHOLDER)){warn("A jóváhagyott tudás-issue nem tartalmaz kitöltött végleges választ, ezért kimaradt: "+Json.string(issue.get("html_url")));continue;}
+                if(missingAnswer(answer))answer=approvalCommentAnswer(loadComments(((Number)issue.get("number")).intValue()));
+                if(missingAnswer(answer)){warn("A jóváhagyott tudás-issue nem tartalmaz kitöltött végleges választ vagy /approve hozzászólást, ezért kimaradt: "+Json.string(issue.get("html_url")));continue;}
                 Set<String> labels=labels(issue);
                 String origin=controlledValue(namedSection(body,"Tudás eredete"),labels,ALLOWED_ORIGINS);
                 String documentation=controlledValue(namedSection(body,"Nyilvános dokumentáció állapota"),labels,ALLOWED_DOCUMENTATION_STATES);
@@ -92,15 +91,20 @@ final class KnowledgeRepositoryClient {
 
                 ## Ellenőrzött végleges válasz
 
-                %s
+                Az issue törzsét nem kell szerkesztened. Az oldal alján, az **Add a comment** mezőbe írd:
+
+                ```text
+                /approve
+                Ide írd vagy másold az ügyfélnek adható, ellenőrzött végleges választ.
+                ```
 
                 ## Tudás eredete
 
-                %s
+                A jobb oldali **Labels** választóban adj hozzá pontosan egyet: `official-source` vagy `expert-confirmed`.
 
                 ## Nyilvános dokumentáció állapota
 
-                %s
+                A jobb oldali **Labels** választóban adj hozzá pontosan egyet: `documented` vagy `documentation-gap`.
 
                 ## Felhasznált források
 
@@ -120,7 +124,7 @@ final class KnowledgeRepositoryClient {
                 ## Jóváhagyási nyilatkozat
 
                 A `%s` címke hozzáadása azt jelenti, hogy az **Ellenőrzött végleges válasz**, annak eredete, dokumentációs állapota és forrásai a későbbi kérdéseknél átadhatók a konfigurált külső AI-szolgáltatónak. A privát issue URL-je nem kerül átadásra.
-                """.formatted(approvedLabel,question.repository(),question.kind(),question.number(),question.author(),question.url(),question.title(),question.body(),system,draft,PLACEHOLDER,ORIGIN_PLACEHOLDER,DOCUMENTATION_PLACEHOLDER,sourceList,warningText,approvedLabel);
+                """.formatted(approvedLabel,question.repository(),question.kind(),question.number(),question.author(),question.url(),question.title(),question.body(),system,draft,sourceList,warningText,approvedLabel);
     }
 
     static String section(String body,String startHeading,String nextHeading){
@@ -141,6 +145,23 @@ final class KnowledgeRepositoryClient {
         String prefix="https://github.com/"+repository+"/issues/";
         return text.replaceAll(java.util.regex.Pattern.quote(prefix)+"\\d+(?:[#?][^\\s)]*)?","[BELSŐ LINK ELTÁVOLÍTVA]");
     }
+
+    static String approvalCommentAnswer(List<Object> comments){
+        for(int index=comments.size()-1;index>=0;index--){
+            String body=Json.string(Json.object(comments.get(index)).get("body")).trim();
+            if(!(body.equals("/approve")||body.startsWith("/approve\n")||body.startsWith("/approve\r\n")))continue;
+            String answer=body.substring("/approve".length()).stripLeading();
+            if(!answer.isBlank())return answer;
+        }
+        return "";
+    }
+
+    private List<Object> loadComments(int number){
+        try{return Json.array(Json.parse(http.get("https://api.github.com/repos/"+config.knowledgeRepository()+"/issues/"+number+"/comments?per_page=100",headers).body()));}
+        catch(Exception error){warn("A tudás-issue hozzászólásainak olvasása sikertelen (#"+number+"): "+error.getMessage());return List.of();}
+    }
+
+    private static boolean missingAnswer(String answer){return answer==null||answer.isBlank()||answer.contains(PLACEHOLDER)||answer.startsWith("Az issue törzsét nem kell szerkesztened.");}
 
     private boolean sameSystem(String expected,String stored,String fallbackText){
         if("NEM AZONOSÍTOTT".equals(expected))return true;

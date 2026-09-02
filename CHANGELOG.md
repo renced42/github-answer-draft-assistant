@@ -1,5 +1,14 @@
 # Változásnapló
 
+## 2026-09-02 – Opcionális OpenAI Responses API
+
+- Az AI-szolgáltató `groq` és `openai` között Environment változóval váltható.
+- Az OpenAI-integráció a Responses API-t használja, alapértelmezett `gpt-5.4-mini` modellel.
+- Az OpenAI webes keresése a GitHub és NAV domainekre korlátozott.
+- Csak a kiválasztott szolgáltató API-kulcsa kötelező.
+- Javítva lett az URL nélküli, jóváhagyott privát tudás rangsorolás közbeni téves kiszűrése.
+- Az automatikus review Issue törzsének szerkesztése helyett az ellenőrzött válasz `/approve` hozzászólásban adható meg; az eredet és dokumentációs állapot a GitHub Labels választóval állítható.
+
 ## 2026-09-02 – Szakértői tudás és dokumentációs hiány kezelése
 
 - A jóváhagyott tudás eredete `official-source` vagy `expert-confirmed` lehet.

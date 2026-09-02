@@ -2,11 +2,10 @@ package hu.gov.nav.answerdraft;
 
 import java.util.*;
 
-final class GroqClient {
-    record Generation(String content,List<String> warnings){}
+final class GroqClient implements AiClient {
     private final WebClient http; private final Config config;
     GroqClient(WebClient http,Config config){this.http=http;this.config=config;}
-    Generation generate(Prompt prompt){
+    @Override public Generation generate(Prompt prompt){
         if(!config.browserSearch())return new Generation(request(prompt,false,0.15),List.of());
         try{return new Generation(request(prompt,true,0.15),List.of());}
         catch(WebClient.HttpStatusException first){
