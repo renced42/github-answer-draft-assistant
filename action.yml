@@ -1,5 +1,5 @@
 name: "GitHub Answer Draft Assistant – Java + Groq"
-description: "Nyilvános NAV-forrásokból választervezetet készít és emailben elküldi. GitHubra nem publikál."
+description: "NAV-forrásokból emailes választervezetet és opcionális privát review issue-t készít; az eredeti kérdésre nem publikál."
 
 inputs:
   organization:
@@ -48,6 +48,26 @@ inputs:
     description: "Használja-e a Groq beépített böngészős keresését"
     required: false
     default: "true"
+  knowledge-repository:
+    description: "Opcionális privát tudástár-repository owner/repository alakban"
+    required: false
+    default: ""
+  knowledge-approved-label:
+    description: "Csak az ezzel a címkével jóváhagyott tudás-issue-k használhatók"
+    required: false
+    default: "approved-knowledge"
+  knowledge-candidate-label:
+    description: "Az automatikusan létrehozott review issue kezdőcímkéje"
+    required: false
+    default: "knowledge-candidate"
+  create-review-issue:
+    description: "Hozzon-e létre privát review issue-t a tudástárban"
+    required: false
+    default: "true"
+  knowledge-limit:
+    description: "A promptba emelhető jóváhagyott tudás-issue-k legnagyobb száma"
+    required: false
+    default: "5"
   dry-run:
     description: "Email helyett csak a workflow-naplóba írja a tervezetet"
     required: false
@@ -87,6 +107,11 @@ runs:
         ASSISTANT_GROQ_MODEL: ${{ inputs.groq-model }}
         ASSISTANT_NAV_SEARCH: ${{ inputs.nav-gov-hu-search }}
         ASSISTANT_BROWSER_SEARCH: ${{ inputs.browser-search }}
+        ASSISTANT_KNOWLEDGE_REPOSITORY: ${{ inputs.knowledge-repository }}
+        ASSISTANT_KNOWLEDGE_APPROVED_LABEL: ${{ inputs.knowledge-approved-label }}
+        ASSISTANT_KNOWLEDGE_CANDIDATE_LABEL: ${{ inputs.knowledge-candidate-label }}
+        ASSISTANT_CREATE_REVIEW_ISSUE: ${{ inputs.create-review-issue }}
+        ASSISTANT_KNOWLEDGE_LIMIT: ${{ inputs.knowledge-limit }}
         ASSISTANT_DRY_RUN: ${{ inputs.dry-run }}
       run: |
         java -cp "${RUNNER_TEMP}/github-answer-draft-assistant" \

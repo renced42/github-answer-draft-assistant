@@ -1,5 +1,17 @@
 # Változásnapló
 
+## 2026-09-02 – Privát, GitHub Issues-alapú ellenőrzött tudástár
+
+- A választervezet opcionálisan privát review issue-ként is létrejön a konfigurált tudástár-repositoryban.
+- Az email tartalmazza az eredeti kérdés és a privát review issue közvetlen linkjét.
+- A rendszer kizárólag az `approved-knowledge` címkés, kitöltött végleges választ használja későbbi RAG-forrásként.
+- A `needs-correction`, `rejected` és `outdated` címkék kizárják az issue-t a visszakeresésből.
+- Ismételt workflow-futtatáskor a rendszer felismeri a már létező review issue-t, és nem hoz létre másolatot.
+- A Groq-hívás valódi `system` és `user` üzenetre váltott; a rendszer- és forráshűségi utasítások külön rendszerüzenetben szerepelnek.
+- A prompt külön kezeli az eNyugta, Online pénztárgép, Online Számla és eÁFA rendszereket.
+- Elkészült a privát tudástár manuális bejegyzéseihez használható GitHub Issue Form.
+- Az Action `actions/setup-java@v6` verzióra frissült.
+
 ## 2026-09-02 – Groq `output_parse_failed` kezelés
 
 - A hibásan formázott böngészős eszközhívás nem állítja le azonnal a workflow-t.

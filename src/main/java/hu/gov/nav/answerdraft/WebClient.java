@@ -20,6 +20,7 @@ final class WebClient {
         throw new IllegalStateException("HTTP hívás sikertelen: "+url);
     }
     static final class HttpStatusException extends IllegalStateException {
+        private static final long serialVersionUID=1L;
         private final int status;
         private HttpStatusException(int status,String message){super(message);this.status=status;}
         int status(){return status;}

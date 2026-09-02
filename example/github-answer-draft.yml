@@ -34,10 +34,16 @@ jobs:
           groq-model: ${{ vars.DRAFT_GROQ_MODEL || 'openai/gpt-oss-120b' }}
           nav-gov-hu-search: "true"
           browser-search: "true"
+          knowledge-repository: ${{ vars.KNOWLEDGE_REPOSITORY }}
+          knowledge-approved-label: "approved-knowledge"
+          knowledge-candidate-label: "knowledge-candidate"
+          create-review-issue: "true"
+          knowledge-limit: ${{ vars.KNOWLEDGE_LIMIT || '5' }}
         env:
           GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          KNOWLEDGE_REPOSITORY_TOKEN: ${{ secrets.KNOWLEDGE_REPOSITORY_TOKEN }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -67,10 +73,16 @@ jobs:
           groq-model: ${{ vars.DRAFT_GROQ_MODEL || 'openai/gpt-oss-120b' }}
           nav-gov-hu-search: "true"
           browser-search: "true"
+          knowledge-repository: ${{ vars.KNOWLEDGE_REPOSITORY }}
+          knowledge-approved-label: "approved-knowledge"
+          knowledge-candidate-label: "knowledge-candidate"
+          create-review-issue: "true"
+          knowledge-limit: ${{ vars.KNOWLEDGE_LIMIT || '5' }}
         env:
           GITHUB_READ_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          KNOWLEDGE_REPOSITORY_TOKEN: ${{ secrets.KNOWLEDGE_REPOSITORY_TOKEN }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
