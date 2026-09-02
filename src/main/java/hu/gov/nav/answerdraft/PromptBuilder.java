@@ -84,7 +84,7 @@ final class PromptBuilder {
                   interfészre és végpontra vonatkozik, mint a kérdés?”
                   Ha a válasz nem egyértelmű igen, az állítást hagyd ki vagy jelöld
                   ellenőrizendőnek.
-
+                                        
                 KIMENET (csak ezt add vissza):
                 ## JAVASOLT VÁLASZ
                 Rövid, közvetlen, udvarias magyar válasz. Ne írj sablonos köszöntést/aláírást.
